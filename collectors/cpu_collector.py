@@ -129,11 +129,11 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
             return None
 
     def _get_cpu_temp(self):
-        # Нет стандартного способа без сторонних утилит, возвращаем None
+        # Нет стандартного способа
         return None
 
     def _get_interrupts(self):
-        # Нет стандартного способа без сторонних утилит, возвращаем None
+        # Нет стандартного способа
         return None
 
     def _get_cpu_info(self):
@@ -174,7 +174,6 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
         return None
 
     def _get_context_switches(self):
-        """Количество переключений контекста"""
         try:
             output = subprocess.check_output(["vm_stat"]).decode()
             for line in output.split('\n'):
@@ -330,7 +329,6 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
             return {}
     
     def _get_process_count(self):
-        """Количество запущенных процессов"""
         try:
             output = subprocess.check_output(["ps", "-A"]).decode().strip().split("\n")
             return len(output) - 1  # Минус заголовок
@@ -340,7 +338,7 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
     def _get_cpu_temperature(self):
         """Температура CPU"""
         try:
-            # Пробуем разные возможные пути к датчикам температуры
+            # возможные пути к датчикам температуры
             thermal_paths = [
                 '/sys/class/thermal/thermal_zone0/temp',
                 '/sys/class/hwmon/hwmon0/temp1_input',
@@ -351,13 +349,12 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
                 if os.path.exists(path):
                     with open(path, 'r') as f:
                         temp = int(f.read().strip())
-                        return temp / 1000.0  # Преобразуем в градусы Цельсия
+                        return temp / 1000.0  # преобразование в градусы
         except Exception:
             pass
         return None
 
     def _get_context_switches(self):
-        """Количество переключений контекста"""
         try:
             with open('/proc/stat', 'r') as f:
                 for line in f:
