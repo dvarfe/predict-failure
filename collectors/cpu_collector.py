@@ -67,7 +67,7 @@ class AbstractCPUDataCollector(AbstractDataCollector):
         return df
     
     def get_history(self):
-        """Загрузить исторические данные этого collector из его CSV"""
+        """Загрузить исторические данные"""
         if os.path.exists(self._csv_path):
             return pd.read_csv(self._csv_path)
         return pd.DataFrame()
@@ -87,8 +87,7 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
 
     def _get_cpu_usage(self):
         """
-        Используем `ps -A -o %cpu` для замера загрузки CPU (в процентах).
-        Это грубая оценка, но без сторонних библиотек иначе сложно.
+        Используем `ps -A -o %cpu` для замера загрузки CPU (в процентах). Грубая оценка.
         """
         try:
             output = subprocess.check_output(["ps", "-A", "-o", "%cpu"]).decode().strip().split("\n")[1:]
@@ -110,7 +109,6 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
     def _get_cpu_freq(self):
         """Частота CPU в ГГц (номинальная и текущая)"""
         try:
-            # Пробуем получить текущую частоту
             cmd = ["sysctl", "-n", "hw.cpufrequency"]
             freq_hz = int(subprocess.check_output(cmd).decode().strip())
             return freq_hz / 1e9  # ГГц
@@ -118,7 +116,7 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
             return None
 
     def _get_cpu_freq_min_max(self):
-        # macOS не предоставляет min/max через sysctl, возвращаем None
+        # macOS не предоставляет min/max через sysctl
         return None, None
 
     def _get_uptime(self):
