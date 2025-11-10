@@ -51,6 +51,8 @@ def feature_monitor():
         features = [col for col in df.columns if col != "timestamp"]
 
     selected_feature = request.args.get('feature', features[0] if features else '')
+    if selected_feature not in features:
+        selected_feature = features[0] if features else ''
     chart_data = None
 
     if df is not None and selected_feature and not df.empty:
