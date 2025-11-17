@@ -1,5 +1,6 @@
 import platform
-import json, os
+import json
+import os
 
 from collectors import DICT_COLLECTORS
 from models import DICT_MODELS
@@ -11,13 +12,14 @@ def save_config(config, path):
     with open(path, "w") as f:
         json.dump(config, f, indent=4)
 
+
 def load_config(path):
     if os.path.exists(path):
         with open(path, "r") as f:
             return json.load(f)
     system = platform.system()
     enabled_collectors = list(DICT_COLLECTORS.get(system, {}).keys())
-    
+
     config = {"system": system, "enabled_collectors": enabled_collectors}
     config["collectors"] = {c: {} for c in enabled_collectors}
     config["models"] = list(DICT_MODELS.keys())
@@ -39,7 +41,7 @@ class ConfigManager:
     def get_collector_config(self, name):
         configs = self.get_collectors()
         return configs.get(name, {})
-    
+
     def get_collectors(self):
         return self.config.get("collectors", {})
 
