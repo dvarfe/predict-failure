@@ -1,5 +1,6 @@
 from .cpu_collector import CpuCollectorMacOS, CpuCollectorLinux
 from .gpu_collector import GpuCollectorLinux
+from .drive_collector import DriveCollectorLinux
 
 DICT_COLLECTORS = {
     "Darwin": {
@@ -9,6 +10,7 @@ DICT_COLLECTORS = {
     },
     "Linux": {
         "cpu": CpuCollectorLinux,
-        "gpu": GpuCollectorLinux
+        "gpu": GpuCollectorLinux,
+        "drive": DriveCollectorLinux
     }
 }
