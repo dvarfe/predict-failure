@@ -110,11 +110,15 @@ class AbstractGPUDataCollector(AbstractDataCollector):
     def collect(self, objects: Optional[List[str]] = None) -> pd.DataFrame:
         timestamp = time.time()
         all_gpu_data = []
+        gpus_to_iterate = self.detected_gpus
+        if objects:
+            selected_set = set(objects)
+            gpus_to_iterate = [g for g in self.detected_gpus if f"{g['name']}: {g['id']}" in selected_set]
 
-        if self.detected_gpus:
+        if gpus_to_iterate:
             # Группируем GPU по провайдерам
             providers_gpus = {}
-            for gpu in self.detected_gpus:
+            for gpu in gpus_to_iterate:
                 provider = gpu['provider']
                 if provider not in providers_gpus:
                     providers_gpus[provider] = []

@@ -23,9 +23,11 @@ class SystemManager:
         for name, collector in self.collectors.items():
             try:
                 objects = collector.find_objects()
-            except Exception as e:
+            except Exception:
                 objects = []
-            result[name] = {"objects": objects}
+            cfg = self.config_manager.get_collector_config(name)
+            selected = cfg.get('selected_objects', [])
+            result[name] = {"objects": objects, "selected": selected}
         return result
 
     # # --- Регистрация ---
@@ -44,8 +46,11 @@ class SystemManager:
     # --- Работа с данными ---
     def collect_data(self, collector_name: str, objects=None):
         collector = self.collectors[collector_name]
-        # objects = objects or collector.discover_objects()
-        self.data = collector.collect()
+        # If objects not provided, try to get selected objects from config
+        if objects is None:
+            cfg = self.config_manager.get_collector_config(collector_name)
+            objects = cfg.get('selected_objects', None)
+        self.data = collector.collect(objects=objects)
         return self.data
 
     # --- Работа с моделями ---

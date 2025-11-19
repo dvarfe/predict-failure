@@ -1,11 +1,9 @@
 import os
 from flask import Flask, render_template, redirect, send_file
-from flask import request, session
-from flask import url_for, jsonify
+from flask import request
+from flask import url_for
 
 from core.system_manager import SystemManager
-
-import pandas as pd
 
 app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
@@ -13,18 +11,46 @@ app.secret_key = 'your_secret_key'  # Для работы сессии
 
 manager = SystemManager()
 
-@app.route('/')
+
+def save_settings(manager):
+    for name in manager.collectors.keys():
+        key = f"{name}_object"
+        selected = request.form.getlist(key)
+
+        cfg = manager.config_manager.get_collector_config(name)
+        cfg['selected_objects'] = selected
+        manager.config_manager.update_collector_config(name, cfg)
+
+
+def collect_data(manager):
+    for name in manager.collectors.keys():
+        manager.collect_data(name)
+
+
+@app.route('/', methods=['GET', 'POST'])
 def main():
-    # return render_template('index.html', header={})
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'save':
+            save_settings(manager)
+
+        elif action == 'collect':
+            save_settings(manager)
+            collect_data(manager)
+
+        return redirect(url_for('main'))
+
     result = manager.find_objects()
     print(result)
-    data = manager.collect_data('cpu')
     return render_template('index.html', collectors=result)
+
 
 @app.route('/find_objects')
 def find_objects():
     result = manager.find_objects()
     return render_template('index.html', collectors=result)
+
 
 @app.route('/system_status')
 def system_status():
@@ -37,6 +63,7 @@ def system_status():
         except Exception as e:
             status[name] = {"error": str(e)}
     return render_template('system_status.html', status=status)
+
 
 @app.route('/feature_monitor', methods=['GET'])
 def feature_monitor():
@@ -69,6 +96,7 @@ def feature_monitor():
         selected_feature=selected_feature,
         chart_data=chart_data
     )
+
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=False, host='0.0.0.0', port=11111)

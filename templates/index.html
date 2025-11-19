@@ -2,22 +2,31 @@
 
 {% block content %}
 
-{% for name, data in collectors.items() %}
-<div class="collector-block">
-    <div class="collector-title">{{ name }}</div>
-    <ul class="objects-list">
-        {% for obj in data.objects %}
-        <li>
-            <label style="color:white">
-                <input type="checkbox" name="{{ name }}_object" value="{{ obj }}">
-                {{ obj }}
-            </label>
-        </li>
-        {% else %}
-        <li style="color:#888;">Нет объектов</li>
+<form method="post" action="{{ url_for('main') }}">
+    <div class="collectors-grid">
+        {% for name, data in collectors.items() %}
+        <div class="collector-block">
+            <div class="collector-title">{{ name }}</div>
+            <ul class="objects-list">
+                {% for obj in data.objects %}
+                <li>
+                    <label style="color:white">
+                        <input type="checkbox" name="{{ name }}_object" value="{{ obj }}" {% if obj in
+                            data.get('selected', []) %}checked{% endif %}>
+                        {{ obj }}
+                    </label>
+                </li>
+                {% else %}
+                <li style="color:#888;">Нет объектов</li>
+                {% endfor %}
+            </ul>
+        </div>
         {% endfor %}
-    </ul>
-</div>
-{% endfor %}
+    </div>
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 2rem;">
+        <button type="submit" name="action" value="save" class="btn btn-large">Сохранить все настройки</button>
+        <button type="submit" name="action" value="collect" class="btn btn-large">Запустить сбор</button>
+    </div>
+</form>
 
 {% endblock %}

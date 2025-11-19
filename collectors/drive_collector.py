@@ -99,11 +99,14 @@ class AbstractDriveDataCollector(AbstractDataCollector):
         timestamp = time.time()
         all_drive_data = []
 
-        if not self.detected_drives:
+        drives_to_iterate = self.detected_drives
+        if objects:
+            drives_to_iterate = [d for d in self.detected_drives if d.get('device') in objects]
+        if not drives_to_iterate:
             empty_data = self._get_empty_drive_data(timestamp)
             all_drive_data.append(empty_data)
         else:
-            for drive in self.detected_drives:
+            for drive in drives_to_iterate:
                 drive_data = self._collect_drive_smart_data(drive, timestamp)
                 all_drive_data.append(drive_data)
 
