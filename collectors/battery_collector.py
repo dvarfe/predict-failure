@@ -110,29 +110,24 @@ class BatteryCollector(AbstractDataCollector):
                     print(f"Ошибка получения статуса зарядки: {e}")
 
                 try:
-                    # NOTE: temporarily disabled due to library bug
-                    # current_capacity = battery.capacity()
-                    # design_capacity = battery.design_capacity()
-                    #
-                    # # Обрабатываем случай, когда возвращается строка с несколькими значениями
-                    # if current_capacity is not None:
-                    #     if isinstance(current_capacity, str):
-                    #         # Берем первое значение из строки
-                    #         current_capacity = float(current_capacity.strip().split('\n')[0])
-                    #     data["capacity_current"] = round(float(current_capacity), 1)
-                    #
-                    # if design_capacity is not None:
-                    #     if isinstance(design_capacity, str):
-                    #         # Берем первое значение из строки
-                    #         design_capacity = float(design_capacity.strip().split('\n')[0])
-                    #     data["capacity_design"] = round(float(design_capacity), 1)
-                    #
-                    # # Вычисляем здоровье батареи
-                    # if (data.get("capacity_current") is not None and
-                    #     data.get("capacity_design") is not None and
-                    #     data["capacity_design"] > 0):
-                    #     health = (data["capacity_current"] / data["capacity_design"]) * 100
-                    #     data["health_percent"] = round(health, 1)
+                    current_capacity = battery.capacity()
+                    design_capacity = battery.design_capacity()
+
+                    if current_capacity is not None:
+                        if isinstance(current_capacity, str):
+                            current_capacity = float(current_capacity.strip().split('\n')[0])
+                        data["capacity_current"] = round(float(current_capacity), 1)
+
+                    if design_capacity is not None:
+                        if isinstance(design_capacity, str):
+                            design_capacity = float(design_capacity.strip().split('\n')[0])
+                        data["capacity_design"] = round(float(design_capacity), 1)
+
+                    if (data.get("capacity_current") is not None and
+                        data.get("capacity_design") is not None and
+                            data["capacity_design"] > 0):
+                        health = (data["capacity_current"] / data["capacity_design"]) * 100
+                        data["health_percent"] = round(health, 1)
 
                     design_capacity = None
                     try:
@@ -141,7 +136,6 @@ class BatteryCollector(AbstractDataCollector):
                             design_capacity = float(design_capacity.strip().split('\n')[0])
                         data["capacity_design"] = round(float(design_capacity), 1)
                     except Exception:
-                        # ignore design capacity parsing errors for now
                         data["capacity_design"] = None
 
                 except Exception as e:
