@@ -36,3 +36,15 @@ class SchedulerBase(ABC):
     @abstractmethod
     def apply_schedule(self, schedule_config: dict, job_func: Any) -> None:
         raise NotImplementedError()
+
+    def close(self, wait: bool = True) -> None:
+        try:
+            self.shutdown(wait=wait)
+        except Exception:
+            return
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

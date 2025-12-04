@@ -3,13 +3,16 @@ from flask import Flask, render_template, redirect, send_file
 from flask import request
 from flask import url_for
 
+
 from core.system_manager import SystemManager
 
 app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.secret_key = 'your_secret_key'  # Для работы сессии
 
-manager = SystemManager()
+app.config['SCHEDULER_API_ENABLED'] = True
+
+manager = SystemManager(app)
 
 
 def save_settings(manager):
@@ -38,18 +41,17 @@ def main():
         elif action == 'collect':
             save_settings(manager)
             collect_data(manager)
+            if manager.scheduler is not None:
+                manager.apply_schedule(manager.get_schedule())
+            else:
+                print("Scheduler не доступен. Расписание не применено.")
 
         return redirect(url_for('main'))
 
     result = manager.find_objects()
     print(result)
-    return render_template('index.html', collectors=result)
-
-
-@app.route('/find_objects')
-def find_objects():
-    result = manager.find_objects()
-    return render_template('index.html', collectors=result)
+    schedule = manager.get_schedule()
+    return render_template('index.html', collectors=result, schedule=schedule)
 
 
 @app.route('/system_status')
@@ -98,5 +100,49 @@ def feature_monitor():
     )
 
 
+@app.route('/schedule', methods=['POST'])
+def schedule():
+    """Формы управления запуском по расписанию
+        Галочка включения расписания отвечает за то, будет ли планировщик активен
+        Остальное понятно интуитивно
+        Активируется при нажатии кнопки "Сохранить расписание"
+    """
+    try:
+        schedule_enabled = request.form.get('schedule_enabled') == 'on'
+        interval_value = int(request.form.get('interval_value', 5))
+        interval_unit = request.form.get('interval_unit', 'minutes')
+        selected_collectors = request.form.getlist('selected_collectors')
+
+        schedule_config = {
+            'enabled': schedule_enabled,
+            'interval_value': interval_value,
+            'interval_unit': interval_unit,
+            'selected_collectors': selected_collectors
+        }
+
+        manager.set_schedule(
+            enabled=schedule_enabled,
+            interval_value=interval_value,
+            interval_unit=interval_unit,
+            selected_collectors=selected_collectors)
+
+        print(f"Настройки расписания сохранены: {schedule_config}")
+        return redirect(url_for('main'))
+
+    except Exception as e:
+        print(f"Ошибка при сохранении настроек расписания: {e}")
+        # TODO: более красивый хэндлер ошибок
+        raise e
+        # return redirect(url_for('main'))
+
+
+@app.route('/stop_schedule', methods=['POST'])
+def stop_schedule():
+    manager.set_schedule(enabled=False)
+    if manager.scheduler is not None:
+        manager.apply_schedule(manager.get_schedule())
+    return redirect(url_for('main'))
+
+
 if __name__ == '__main__':
-    app.run(debug=True, threaded=False, host='0.0.0.0', port=11111)
+    app.run(debug=False, threaded=True, host='0.0.0.0', port=11111)

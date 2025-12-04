@@ -25,6 +25,8 @@ class SystemManager:
         else:
             self.scheduler = DICT_SCHEDULERS[DEFAULT_SCHEDULER_PARAMS["name"]](app, **DEFAULT_SCHEDULER_PARAMS)
         self.scheduler_name = name
+        
+        self.scheduler.start()
 
     def setup_config(self, app=None):
         self.models = {}
@@ -71,7 +73,7 @@ class SystemManager:
 
     def apply_schedule(self, schedule_config):
         if self.scheduler is None:
-            raise ValueError("Scheduler not initialized")
+            return
         self.scheduler.apply_schedule(schedule_config, self.run_scheduled)
 
     def run_scheduled(self, selected_collectors):

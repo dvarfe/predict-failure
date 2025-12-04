@@ -1,0 +1,65 @@
+<div id="schedule-modal"
+    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); z-index: 1000; display: none; align-items: center; justify-content: center;">
+    <div
+        style="background: #232323; border-radius: 12px; padding: 2rem; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h3 style="color: #7ecfff; margin: 0;">Настройка расписания</h3>
+            <a href="#"
+                style="background: none; border: none; color: #fff; font-size: 1.5rem; text-decoration: none;">&times;</a>
+        </div>
+
+        <form method="post" action="/schedule" style="color: #eee;">
+            <!-- Включение/выключение -->
+            <div style="margin-bottom: 2rem;">
+                <label style="display: flex; align-items: center; gap: 1rem; font-size: 1.1rem;">
+                    <input type="checkbox" name="schedule_enabled" style="transform: scale(1.5);">
+                    Включить автоматический сбор данных
+                </label>
+            </div>
+
+            <!-- Интервал -->
+            <div style="margin-bottom: 2rem;">
+                <h5 style="color: #7ecfff; margin-bottom: 1rem;">Интервал сбора:</h5>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <input type="number" name="interval_value" value="5" min="1"
+                        style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #333; color: #eee; width: 80px;">
+                    <select name="interval_unit"
+                        style="padding: 0.5rem; border: 1px solid #555; border-radius: 4px; background: #333; color: #eee;">
+                        <option value="seconds">секунд</option>
+                        <option value="minutes" selected>минут</option>
+                        <option value="hours">часов</option>
+                        <option value="days">дней</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Выбор коллекторов -->
+            <div style="margin-bottom: 2rem;">
+                <h5 style="color: #7ecfff; margin-bottom: 1rem;">Коллекторы:</h5>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
+                    {% for name in collectors.keys() %}
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #333; border-radius: 4px;">
+                        <input type="checkbox" name="selected_collectors" value="{{ name }}">
+                        {{ name }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div style="display: flex; justify-content: center; gap: 1rem;">
+                <button type="submit" class="btn btn-large"
+                    style="background: #7ecfff; color: #181818;">Сохранить</button>
+                <a href="#" class="btn btn-large"
+                    style="background: #555; color: #eee; text-decoration: none;">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    #schedule-modal:target {
+        display: flex !important;
+    }
+</style>
