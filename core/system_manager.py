@@ -1,15 +1,15 @@
 import pandas as pd
 from core.config import ConfigManager
-from schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_NAME
+from schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
 from collectors import DICT_COLLECTORS
 
 
 class SystemManager:
-    def __init__(self):
+    def __init__(self, app=None):
         self.config_manager = ConfigManager()
         self.data = None
         self.predictions = {}
-        self.setup_config()
+        self.setup_config(app)
 
     def setup_collectors(self):
         self.collectors = {}
@@ -19,14 +19,17 @@ class SystemManager:
 
     def setup_scheduler(self, app=None):
         sched_cfg = self.config_manager.get_scheduler()
-        name = sched_cfg.get('name', DEFAULT_SCHEDULER_NAME)
-        self.scheduler = DICT_SCHEDULERS.get(name, DICT_SCHEDULERS[DEFAULT_SCHEDULER_NAME])(app)
+        name = sched_cfg.get('name', sched_cfg["name"])
+        if name in DICT_SCHEDULERS:
+            self.scheduler = DICT_SCHEDULERS[name](app, **sched_cfg)
+        else:
+            self.scheduler = DICT_SCHEDULERS[DEFAULT_SCHEDULER_PARAMS["name"]](app, **DEFAULT_SCHEDULER_PARAMS)
         self.scheduler_name = name
 
-    def setup_config(self):
+    def setup_config(self, app=None):
         self.models = {}
         self.setup_collectors()
-        self.setup_scheduler()
+        self.setup_scheduler(app)
 
     def find_objects(self):
         result = {}

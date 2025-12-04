@@ -1,13 +1,18 @@
 from flask_apscheduler import APScheduler
 from typing import Any
-from ..base.scheduler_base import SchedulerBase
+from base.scheduler_base import SchedulerBase
 
 
 class FlaskScheduler(SchedulerBase):
-    def __init__(self, app):
+    def __init__(self, app, name, enabled, interval_value, interval_unit, selected_collectors):
         self.aps = APScheduler()
         self._app = app
         self.aps.init_app(app)
+        self.name = name
+        self.enabled = enabled
+        self.interval_value = interval_value
+        self.interval_unit = interval_unit
+        self.selected_collectors = selected_collectors
 
     def start(self):
         self.aps.start()
