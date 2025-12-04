@@ -4,6 +4,7 @@ import os
 
 from collectors import DICT_COLLECTORS
 from models import DICT_MODELS
+from schedulers import DEFAULT_SCHEDULER_NAME
 
 
 def save_config(config, path):
@@ -23,6 +24,7 @@ def load_config(path):
     config = {"system": system, "enabled_collectors": enabled_collectors}
     config["collectors"] = {c: {} for c in enabled_collectors}
     config["models"] = list(DICT_MODELS.keys())
+    config["scheduler"] = DEFAULT_SCHEDULER_NAME
     save_config(config, path)
     return config
 
@@ -49,4 +51,17 @@ class ConfigManager:
         if "collectors" not in self.config:
             self.config["collectors"] = {}
         self.config["collectors"][name] = new_config
-        save_config(self.config, self.path)
+        self.save_config()
+
+    def get_scheduler(self):
+        return self.config.get("scheduler", {})
+
+    def update_scheduler_config(self, new_config):
+        self.config["scheduler"] = new_config
+        self.save_config()
+
+    def save_config(self, config: dict = None, path: str = None):
+        save_config(config, path)
+
+    def __del__(self):
+        self.save_config()
