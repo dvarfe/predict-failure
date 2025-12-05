@@ -22,6 +22,8 @@ class BatteryCollector(AbstractDataCollector):
         """Метаданные всех признаков батареи"""
         return {
             "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
+            "battery_id": FeatureMetadata("battery_id", FeatureType.IDENTIFIER, "", "Идентификатор батареи"),
+            "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель батареи"),
             "battery_present": FeatureMetadata("battery_present", FeatureType.CATEGORICAL, "bool", "Присутствует ли батарея"),
             "is_charging": FeatureMetadata("is_charging", FeatureType.CATEGORICAL, "bool", "Заряжается ли батарея"),
             "is_discharging": FeatureMetadata("is_discharging", FeatureType.CATEGORICAL, "bool", "Разряжается ли батарея"),
@@ -69,6 +71,8 @@ class BatteryCollector(AbstractDataCollector):
         """Собрать все данные батареи"""
         data = {
             "timestamp": timestamp,
+            "battery_id": "system_battery",
+            "device_name": "System Battery",
             "battery_present": False,
             "is_charging": False,
             "is_discharging": False,

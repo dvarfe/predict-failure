@@ -29,6 +29,7 @@ class AbstractDriveDataCollector(AbstractDataCollector):
         return {
             "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
             "device": FeatureMetadata("device", FeatureType.IDENTIFIER, "", "Устройство диска"),
+            "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель диска"),
             "serial_number": FeatureMetadata("serial_number", FeatureType.IDENTIFIER, "", "Серийный номер диска"),
             "model_name": FeatureMetadata("model_name", FeatureType.CATEGORICAL, "", "Модель диска"),
             "firmware_version": FeatureMetadata("firmware_version", FeatureType.CATEGORICAL, "", "Версия прошивки"),
@@ -135,6 +136,7 @@ class AbstractDriveDataCollector(AbstractDataCollector):
         data = {
             "timestamp": timestamp,
             "device": device_name,
+            "device_name": drive.get('model_name', f"Drive {device_name}"),
             "serial_number": drive.get('serial_number'),
             "model_name": drive.get('model_name'),
             "firmware_version": drive.get('firmware_version'),

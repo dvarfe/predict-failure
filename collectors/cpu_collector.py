@@ -5,10 +5,12 @@ import pandas as pd
 from typing import List, Dict, Any
 
 from base.collector_base import AbstractDataCollector
+from base.feature_metadata import FeatureType, FeatureMetadata
 
 
 class AbstractCPUDataCollector(AbstractDataCollector):
     """Базовый класс для всех CPU сборщиков"""
+
     def __init__(self, config=None):
         self.update_config(config or {})
         # Имя файла для сохранения данных — по имени класса
@@ -17,6 +19,35 @@ class AbstractCPUDataCollector(AbstractDataCollector):
 
     def update_config(self, config):
         self.interval = config.get("interval", 1)  # сек между замерами
+
+    @classmethod
+    def get_feature_metadata(cls) -> Dict[str, FeatureMetadata]:
+        """Метаданные всех признаков CPU"""
+        return {
+            "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
+            "cpu_id": FeatureMetadata("cpu_id", FeatureType.IDENTIFIER, "", "Идентификатор процессора"),
+            "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель процессора"),
+            "cpu_usage_percent": FeatureMetadata("cpu_usage_percent", FeatureType.NUMERICAL, "%", "Загрузка процессора"),
+            "cpu_idle_percent": FeatureMetadata("cpu_idle_percent", FeatureType.NUMERICAL, "%", "Простой процессора"),
+            "cpu_freq_current_ghz": FeatureMetadata("cpu_freq_current_ghz", FeatureType.NUMERICAL, "GHz", "Текущая частота процессора"),
+            "cpu_freq_min_ghz": FeatureMetadata("cpu_freq_min_ghz", FeatureType.NUMERICAL, "GHz", "Минимальная частота процессора"),
+            "cpu_freq_max_ghz": FeatureMetadata("cpu_freq_max_ghz", FeatureType.NUMERICAL, "GHz", "Максимальная частота процессора"),
+            "load_1m": FeatureMetadata("load_1m", FeatureType.NUMERICAL, "", "Средняя нагрузка за 1 минуту"),
+            "load_5m": FeatureMetadata("load_5m", FeatureType.NUMERICAL, "", "Средняя нагрузка за 5 минут"),
+            "load_15m": FeatureMetadata("load_15m", FeatureType.NUMERICAL, "", "Средняя нагрузка за 15 минут"),
+            "load_1m_per_core": FeatureMetadata("load_1m_per_core", FeatureType.NUMERICAL, "", "Средняя нагрузка на ядро за 1 минуту"),
+            "uptime_sec": FeatureMetadata("uptime_sec", FeatureType.NUMERICAL, "sec", "Время работы системы"),
+            "cores": FeatureMetadata("cores", FeatureType.NUMERICAL, "count", "Количество ядер"),
+            "physical_cores": FeatureMetadata("physical_cores", FeatureType.NUMERICAL, "count", "Количество физических ядер"),
+            "cpu_model": FeatureMetadata("cpu_model", FeatureType.CATEGORICAL, "", "Модель процессора"),
+            "cpu_vendor": FeatureMetadata("cpu_vendor", FeatureType.CATEGORICAL, "", "Производитель процессора"),
+            "cache_size": FeatureMetadata("cache_size", FeatureType.NUMERICAL, "KB", "Размер кэша процессора"),
+            "cpu_temp_celsius": FeatureMetadata("cpu_temp_celsius", FeatureType.NUMERICAL, "°C", "Температура процессора"),
+            "total_interrupts": FeatureMetadata("total_interrupts", FeatureType.NUMERICAL, "count", "Общее количество прерываний"),
+            "processes_total": FeatureMetadata("processes_total", FeatureType.NUMERICAL, "count", "Общее количество процессов"),
+            "cpu_temperature_c": FeatureMetadata("cpu_temperature_c", FeatureType.NUMERICAL, "°C", "Температура процессора"),
+            "context_switches": FeatureMetadata("context_switches", FeatureType.NUMERICAL, "count", "Количество переключений контекста"),
+        }
 
     def collect(self, objects=None) -> pd.DataFrame:
         timestamp = time.time()
@@ -38,6 +69,8 @@ class AbstractCPUDataCollector(AbstractDataCollector):
 
         data = {
             "timestamp": [timestamp],
+            "cpu_id": ["system_cpu"],
+            "device_name": [cpu_info.get('model', 'Unknown CPU')],
             "cpu_usage_percent": [usage],
             "cpu_idle_percent": [idle],
             "cpu_freq_current_ghz": [freq],
@@ -65,12 +98,13 @@ class AbstractCPUDataCollector(AbstractDataCollector):
         df.to_csv(self._csv_path, mode='a', header=write_header, index=False)
         print("Собранные данные:", data)
         return df
-    
+
     def get_history(self):
         """Загрузить исторические данные"""
         if os.path.exists(self._csv_path):
             return pd.read_csv(self._csv_path)
         return pd.DataFrame()
+
 
 class CpuCollectorMacOS(AbstractCPUDataCollector):
     def find_objects(self):
@@ -150,7 +184,7 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
             }
         except Exception:
             return {}
-        
+
     def _get_process_count(self):
         """Количество запущенных процессов"""
         try:
@@ -183,7 +217,8 @@ class CpuCollectorMacOS(AbstractCPUDataCollector):
             pass
         return None
 
-class CpuCollectorLinux(AbstractCPUDataCollector):        
+
+class CpuCollectorLinux(AbstractCPUDataCollector):
     def find_objects(self):
         """На Linux объекты = логические CPU"""
         try:
@@ -209,7 +244,7 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
             return sum(cpu_usages) / len(self.find_objects())
         except Exception:
             return None
-        
+
     def _get_cpu_idle(self):
         try:
             with open('/proc/stat', 'r') as f:
@@ -264,7 +299,7 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
             return None, None
         except Exception:
             return None, None
-    
+
     def _get_uptime(self):
         """Время работы системы"""
         try:
@@ -273,7 +308,7 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
             return uptime_seconds
         except Exception:
             return None
-    
+
     def _get_cpu_temp(self):
         try:
             for zone in os.listdir('/sys/class/thermal'):
@@ -327,7 +362,7 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
             return info
         except Exception:
             return {}
-    
+
     def _get_process_count(self):
         try:
             output = subprocess.check_output(["ps", "-A"]).decode().strip().split("\n")
@@ -344,7 +379,7 @@ class CpuCollectorLinux(AbstractCPUDataCollector):
                 '/sys/class/hwmon/hwmon0/temp1_input',
                 '/sys/class/hwmon/hwmon1/temp1_input',
             ]
-            
+
             for path in thermal_paths:
                 if os.path.exists(path):
                     with open(path, 'r') as f:
