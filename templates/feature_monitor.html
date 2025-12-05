@@ -18,11 +18,13 @@
     </form>
 </div>
 <div class="chart-container">
-    <canvas id="featureChart"></canvas>
+    <div id="featureChart" style="width:100%;height:400px;"></div>
 </div>
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
 <script>
     const chartData = {{ chart_data|tojson }};
     const selectedFeature = "{{ selected_feature }}";
+    const featureMetadata = {{ selected_feature_metadata|tojson }};
 </script>
 <script src="{{ url_for('static', filename='monitoring.js') }}"></script>
 {% endblock %}

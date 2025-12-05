@@ -1,9 +1,10 @@
 import os
+import pandas as pd
 from flask import Flask, render_template, redirect, send_file
 from flask import request
 from flask import url_for
 
-
+from base.feature_metadata import FeatureType
 from core.system_manager import SystemManager
 
 app = Flask(__name__)
@@ -73,22 +74,64 @@ def feature_monitor():
     selected_collector = request.args.get('collector', collectors[0] if collectors else '')
     features = []
     df = None
+    feature_metadata = {}
 
     if selected_collector:
         collector_obj = manager.collectors[selected_collector]
         df = collector_obj.get_history()
-        features = [col for col in df.columns if col != "timestamp"]
+
+        metadata = collector_obj.get_feature_metadata()
+
+        features = []
+        for col in df.columns:
+            if col in metadata and metadata[col].type == FeatureType.NUMERICAL:
+                features.append(col)
+
+        feature_metadata = {name: meta.to_dict() for name, meta in metadata.items()}
 
     selected_feature = request.args.get('feature', features[0] if features else '')
     if selected_feature not in features:
         selected_feature = features[0] if features else ''
+
+    if selected_feature and selected_feature in feature_metadata:
+        selected_feature_metadata = feature_metadata[selected_feature]
     chart_data = None
 
     if df is not None and selected_feature and not df.empty:
-        chart_data = {
-            "timestamps": df["timestamp"].tolist(),
-            "values": df[selected_feature].tolist(),
-        }
+        device_id_column = None
+        for col in df.columns:
+            if col in metadata and metadata[col].type == FeatureType.IDENTIFIER:
+                device_id_column = col
+                break
+
+        if device_id_column and device_id_column in df.columns:
+            # Получаем объединение всех временных меток
+            all_timestamps = sorted(df["timestamp"].unique())
+
+            chart_data = []
+            for device_id in df[device_id_column].unique():
+                if pd.isna(device_id):
+                    continue
+
+                device_df = df[df[device_id_column] == device_id]
+                
+                if 'device_name' in device_df.columns and not pd.isna(device_df['device_name'].iloc[0]):
+                    device_name = str(device_df['device_name'].iloc[0])
+                else:
+                    device_name = str(device_id)
+
+                device_timestamps_values = {}
+                for _, row in device_df.iterrows():
+                    device_timestamps_values[row["timestamp"]] = row[selected_feature]
+
+                values = [device_timestamps_values.get(ts, None) for ts in all_timestamps]
+
+                chart_data.append({
+                    "device_id": str(device_id),
+                    "device_name": device_name,
+                    "timestamps": all_timestamps,
+                    "values": values,
+                })
 
     return render_template(
         'feature_monitor.html',
@@ -96,6 +139,7 @@ def feature_monitor():
         features=features,
         selected_collector=selected_collector,
         selected_feature=selected_feature,
+        selected_feature_metadata=selected_feature_metadata,
         chart_data=chart_data
     )
 
