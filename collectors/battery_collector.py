@@ -59,9 +59,8 @@ class BatteryCollector(AbstractDataCollector):
 
         df = pd.DataFrame([battery_data])
 
-        # Сохраняем в CSV
-        write_header = not os.path.exists(self._csv_path) or os.path.getsize(self._csv_path) == 0
-        df.to_csv(self._csv_path, mode='a', header=write_header, index=False)
+
+        self.save_dataframe(df, mode='append')
 
         print(
             f"Собраны данные батареи: {battery_data.get('status', 'Unknown')} - {battery_data.get('percent', 'N/A')}%")
@@ -179,9 +178,3 @@ class BatteryCollector(AbstractDataCollector):
         self.last_capacity = current_percent
         self.last_time = timestamp
         return None
-
-    def get_history(self):
-        """Загрузить исторические данные"""
-        if os.path.exists(self._csv_path):
-            return pd.read_csv(self._csv_path)
-        return pd.DataFrame()

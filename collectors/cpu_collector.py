@@ -12,10 +12,7 @@ class AbstractCPUDataCollector(AbstractDataCollector):
     """Базовый класс для всех CPU сборщиков"""
 
     def __init__(self, config=None):
-        self.update_config(config or {})
-        # Имя файла для сохранения данных — по имени класса
-        self._csv_path = f"storage/data/{self.__class__.__name__}.csv"
-        os.makedirs(os.path.dirname(self._csv_path), exist_ok=True)
+        super().__init__(config)
 
     def update_config(self, config):
         self.interval = config.get("interval", 1)  # сек между замерами
@@ -93,17 +90,9 @@ class AbstractCPUDataCollector(AbstractDataCollector):
             "context_switches": [context_switches],
         }
         df = pd.DataFrame(data)
-        # Сохраняем в CSV (append)
-        write_header = not os.path.exists(self._csv_path) or os.path.getsize(self._csv_path) == 0
-        df.to_csv(self._csv_path, mode='a', header=write_header, index=False)
+        self.save_dataframe(df, mode='append')
         print("Собранные данные:", data)
         return df
-
-    def get_history(self):
-        """Загрузить исторические данные"""
-        if os.path.exists(self._csv_path):
-            return pd.read_csv(self._csv_path)
-        return pd.DataFrame()
 
 
 class CpuCollectorMacOS(AbstractCPUDataCollector):

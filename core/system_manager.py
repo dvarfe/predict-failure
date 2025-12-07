@@ -1,5 +1,6 @@
 import pandas as pd
 from core.config import ConfigManager
+from core.providers import DICT_DATA_PROVIDERS, DEFAULT_PROVIDER_PARAMS, DEFAULT_PROVIDER_TYPE
 from schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
 from collectors import DICT_COLLECTORS
 
@@ -8,14 +9,28 @@ class SystemManager:
     def __init__(self, app=None):
         self.config_manager = ConfigManager()
         self.data = None
-        self.predictions = {}
         self.setup_config(app)
 
     def setup_collectors(self):
         self.collectors = {}
         DICT_COLLECT_FOR_OS = DICT_COLLECTORS.get(self.config_manager.get_system())
+        global_cfg = self.config_manager.get_config().get(
+            'default_data_provider', DEFAULT_PROVIDER_PARAMS)
+        global_type = list(global_cfg.keys())[0]
         for name, config in self.config_manager.get_collectors().items():
-            self.collectors[name] = DICT_COLLECT_FOR_OS.get(name)(config)
+            collector_obj = DICT_COLLECT_FOR_OS.get(name)(config)
+
+            p_cfg = config.get('data_provider', global_cfg)
+            p_type = list(p_cfg.keys())[0] if p_cfg else global_type
+            p_cfg = {**p_cfg[p_type], **{'device_name': name}}
+            provider = self.setup_provider(p_type, p_cfg)
+            collector_obj.set_data_provider(provider)
+
+            self.collectors[name] = collector_obj
+
+    def setup_provider(self, provider_type: str, p_cfg: dict):
+        Provider = DICT_DATA_PROVIDERS.get(provider_type)
+        return Provider(**p_cfg)
 
     def setup_scheduler(self, app=None):
         sched_cfg = self.config_manager.get_scheduler()
@@ -25,7 +40,7 @@ class SystemManager:
         else:
             self.scheduler = DICT_SCHEDULERS[DEFAULT_SCHEDULER_PARAMS["name"]](app, **DEFAULT_SCHEDULER_PARAMS)
         self.scheduler_name = name
-        
+
         self.scheduler.start()
 
     def setup_config(self, app=None):

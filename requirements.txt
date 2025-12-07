@@ -6,3 +6,5 @@ plotly==6.0.1
 GPUtil==1.4.0
 nvidia-ml-py3==13.580.82
 battery==1.0.4
+lifelines==0.30.0
+survivors==1.7.2

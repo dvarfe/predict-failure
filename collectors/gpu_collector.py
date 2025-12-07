@@ -182,7 +182,8 @@ class AbstractGPUDataCollector(AbstractDataCollector):
                         "unique_id": gpu.get('unique_id', ""),
                         "id": gpu['id'],
                         "name": gpu['name'],
-                        "device_name": gpu['name'],  # Имя устройства (например, "NVIDIA RTX 4080", "Intel UHD Graphics")
+                        # Имя устройства (например, "NVIDIA RTX 4080", "Intel UHD Graphics")
+                        "device_name": gpu['name'],
                         "vendor": gpu['vendor'],
                         "type": gpu['type'],
                         "gpu_count": len(self.detected_gpus),
@@ -237,16 +238,10 @@ class AbstractGPUDataCollector(AbstractDataCollector):
 
         df = pd.DataFrame(all_gpu_data)
 
-        write_header = not os.path.exists(self._csv_path) or os.path.getsize(self._csv_path) == 0
-        df.to_csv(self._csv_path, mode='a', header=write_header, index=False)
+        self.save_dataframe(df, mode='append')
+
         print(f"Собраны данные для {len(all_gpu_data)} GPU")
         return df
-
-    def get_history(self):
-        """Загрузить исторические данные"""
-        if os.path.exists(self._csv_path):
-            return pd.read_csv(self._csv_path)
-        return pd.DataFrame()
 
 
 class NvidiaGpuProvider(AbstractGPUProvider):
