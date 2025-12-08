@@ -1,82 +1,100 @@
 import pickle
 import os
+import json
+from datetime import datetime
 
 import onnx
 
 from ..base.model_storage_base import AbstractModelStorage
 
-class PickleModelStorage(AbstractModelStorage):
+
+class ModelStorage(AbstractModelStorage):
+
     def __init__(self, storage_dir: str = "storage/models"):
         self.storage_dir = storage_dir
         os.makedirs(self.storage_dir, exist_ok=True)
 
-    def _path(self, name: str) -> str:
-        return os.path.join(self.storage_dir, f"{name}.pkl")
+    def _model_folder(self, base_name: str) -> str:
+        return os.path.join(self.storage_dir, base_name)
 
     def list_models(self):
-        return [model for model in os.listdir(self.storage_dir) if model.endswith('.pkl')]
+        index = self._read_index()
+        if index:
+            return list(index.keys())
+        return []
 
+    def _index_path(self) -> str:
+        return os.path.join(self.storage_dir, 'index.json')
 
-    def save(self, name: str, model) -> str:
-        path = self._path(name)
-        with open(path, 'wb') as f:
-            pickle.dump(model, f)
-        return path
+    def read_index(self) -> dict:
+        idx = self._index_path()
+        if os.path.exists(idx):
+            with open(idx, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {}
+
+    def _write_index(self, index: dict):
+        idx = self._index_path()
+        with open(idx, 'w', encoding='utf-8') as f:
+            json.dump(index, f, ensure_ascii=False, indent=2)
+
+    def _read_model_config(self, folder: str) -> dict:
+        cfg_path = os.path.join(folder, 'config.json')
+        if os.path.exists(cfg_path):
+            with open(cfg_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {}
 
     def load(self, name: str):
-        path = self._path(name)
-        with open(path, 'rb') as f:
-            return pickle.load(f)
-
-class ONNXModelStorage(AbstractModelStorage):
-    def __init__(self, storage_dir: str = "storage/models"):
-        self.storage_dir = storage_dir
-        os.makedirs(self.storage_dir, exist_ok=True)
-
-    def _path(self, name: str) -> str:
-        return os.path.join(self.storage_dir, f"{name}.onnx")
-
-    def list_models(self):
-        return [model for model in os.listdir(self.storage_dir) if model.endswith('.onnx')]
-
-    def save(self, name: str, model) -> str:
-        path = self._path(name)
-        with open(path, 'wb') as f:
-            f.write(model.SerializeToString())
-        return path
-
-    def load(self, name: str):
-        path = self._path(name)
-        return onnx.load(path)
-
-class ModelStorage(AbstractModelStorage):   
-    
-    def __init__(self, storage_dir: str = "storage/models"):
-        self.storage_dir = storage_dir
-        os.makedirs(self.storage_dir, exist_ok=True)
-        self.pickle_storage = PickleModelStorage(storage_dir=storage_dir)
-        self.onnx_storage = ONNXModelStorage(storage_dir=storage_dir)
-
-    def list_models(self):
-        return os.listdir(self.storage_dir)
-    
-    def load(self, name):
-        if name.endswith('.onnx'):
-            base_name = name[:-5] if name.endswith('.onnx') else name
-            return self.onnx_storage.load(base_name)
-        elif name.endswith('.pkl'):   
-            base_name = name[:-4] if name.endswith('.pkl') else name
-            return self.pickle_storage.load(base_name)
+        base_name = name
+        folder = self._model_folder(base_name)
+        cfg = self._read_model_config(folder)
+        ext = cfg.get('ext', '')
+        if ext == '.onnx':
+            return onnx.load(os.path.join(folder, f"{base_name}{ext}"))
+        elif ext == '.pkl' or ext == '':
+            return pickle.load(open(os.path.join(folder, f"{base_name}{ext}"), 'rb'))
         else:
-            raise ValueError(f"Unknown model format for '{name}'")
-    
+            raise ValueError(f"Unknown model extension '{ext}' for model '{name}'")
+
     def save(self, name: str, model) -> str:
+        base_name = name
+        ext = ''
         if name.endswith('.onnx'):
-            base_name = name[:-5] if name.endswith('.onnx') else name
-            return self.onnx_storage.save(base_name, model)
+            base_name = name[:-5]
+            ext = '.onnx'
         elif name.endswith('.pkl'):
-            base_name = name[:-4] if name.endswith('.pkl') else name
-            return self.pickle_storage.save(base_name, model)
-        else:
-            raise ValueError(f"Unknown model format for '{name}'")
+            base_name = name[:-4]
+            ext = '.pkl'
 
+        folder = self._model_folder(base_name)
+        os.makedirs(folder, exist_ok=True)
+
+        # choose storage based on ext
+        if ext == '.onnx':
+            onnx.save(model, os.path.join(folder, f"{base_name}{ext}"))
+            mtype = 'onnx'
+            file_ext = '.onnx'
+        else:
+            # default to pickle
+            with open(os.path.join(folder, f"{base_name}{ext}"), 'wb') as f:
+                pickle.dump(model, f)
+            mtype = 'pickle'
+            file_ext = '.pkl'
+
+        cfg = {
+            'name': base_name,
+            'type': mtype,
+            'ext': file_ext,
+            'description': '',
+            'date': datetime.isoformat() + 'Z'
+        }
+        cfg_path = os.path.join(folder, 'config.json')
+        with open(cfg_path, 'w', encoding='utf-8') as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+        index = self._read_index()
+        index[base_name] = cfg
+        self._write_index(index)
+
+        return os.path.join(folder, f"{base_name}{file_ext}")
