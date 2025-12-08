@@ -3,34 +3,59 @@ from core.config import ConfigManager
 from modules.providers import DICT_DATA_PROVIDERS, DEFAULT_PROVIDER_PARAMS
 from modules.schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
 from modules.collectors import DICT_COLLECTORS
+from modules.model_storage import DEFAULT_MODEL_STORAGE_PARAMS, DICT_MODEL_STORAGES
 
 
 class SystemManager:
     def __init__(self, app=None):
         self.config_manager = ConfigManager()
         self.data = None
+        self.model_storages = {}  # Словарь хранилищ моделей для каждого устройства
+        self.predictions = {}
         self.setup_config(app)
 
     def setup_collectors(self):
         self.collectors = {}
         DICT_COLLECT_FOR_OS = DICT_COLLECTORS.get(self.config_manager.get_system())
-        global_cfg = self.config_manager.get_config().get(
-            'default_data_provider', DEFAULT_PROVIDER_PARAMS)
-        global_type = list(global_cfg.keys())[0]
+        
         for name, config in self.config_manager.get_collectors().items():
             collector_obj = DICT_COLLECT_FOR_OS.get(name)(config)
 
-            p_cfg = config.get('data_provider', global_cfg)
-            p_type = list(p_cfg.keys())[0] if p_cfg else global_type
-            p_cfg = {**p_cfg[p_type], **{'device_name': name}}
-            provider = self.setup_provider(p_type, p_cfg)
+            provider = self.create_data_provider(name, config)
             collector_obj.set_data_provider(provider)
+
+            model_storage = self.create_model_storage(name, config)
+            self.model_storages[name] = model_storage
 
             self.collectors[name] = collector_obj
 
-    def setup_provider(self, provider_type: str, p_cfg: dict):
-        Provider = DICT_DATA_PROVIDERS.get(provider_type)
+    def create_data_provider(self, device_name: str, config: dict):
+        global_cfg = self.config_manager.get_config().get(
+            'default_data_provider', DEFAULT_PROVIDER_PARAMS)
+        global_type = list(global_cfg.keys())[0]
+        
+        p_cfg = config.get('data_provider', global_cfg)
+        p_type = list(p_cfg.keys())[0] if p_cfg else global_type
+        p_cfg = {**p_cfg[p_type], **{'device_name': device_name}}
+        
+        Provider = DICT_DATA_PROVIDERS.get(p_type)
         return Provider(**p_cfg)
+    
+    def create_model_storage(self, device_name: str, config: dict):
+        global_storage_cfg = self.config_manager.get_config().get(
+            'default_model_storage', DEFAULT_MODEL_STORAGE_PARAMS)
+        global_storage_type = list(global_storage_cfg.keys())[0]
+        
+        storage_cfg = config.get('model_storage', global_storage_cfg)
+        storage_type = list(storage_cfg.keys())[0] if storage_cfg else global_storage_type
+        storage_params = storage_cfg.get(storage_type, {})
+        
+        # Добавляем имя устройства к пати хранилища
+        base_dir = storage_params.get('storage_dir', 'storage/models')
+        storage_params = {**storage_params, 'storage_dir': f'{base_dir}/{device_name}'}
+        
+        StorageClass = DICT_MODEL_STORAGES.get(storage_type, DICT_MODEL_STORAGES["default"])
+        return StorageClass(**storage_params)
 
     def setup_scheduler(self, app=None):
         sched_cfg = self.config_manager.get_scheduler()
@@ -116,3 +141,27 @@ class SystemManager:
         preds = model.predict(self.data)
         self.predictions[model_name] = preds
         return preds
+
+    def save_model(self, device_name: str, model_name: str, model) -> str:
+        if device_name not in self.model_storages:
+            raise RuntimeError(f"Model storage for device '{device_name}' not initialized!")
+        return self.model_storages[device_name].save(model_name, model)
+
+    def load_model(self, device_name: str, model_name: str):
+        if device_name not in self.model_storages:
+            raise RuntimeError(f"Model storage for device '{device_name}' not initialized!")
+        return self.model_storages[device_name].load(model_name)
+
+    def list_models(self, device_name: str) -> list:
+        if device_name not in self.model_storages:
+            raise RuntimeError(f"Model storage for device '{device_name}' not initialized!")
+        return self.model_storages[device_name].list_models()
+
+    def get_all_device_models(self) -> dict:
+        result = {}
+        for device_name, storage in self.model_storages.items():
+            try:
+                result[device_name] = storage.list_models()
+            except Exception as e:
+                result[device_name] = []
+        return result
