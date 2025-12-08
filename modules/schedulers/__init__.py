@@ -1,6 +1,6 @@
 from typing import Dict, Type
 
-from core.scheduler import FlaskScheduler
+from .flask_scheduler import FlaskScheduler
 
 DICT_SCHEDULERS: Dict[str, Type] = {
     'flask': FlaskScheduler,

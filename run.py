@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, send_file
 from flask import request
 from flask import url_for
 
-from base.feature_metadata import FeatureType
+from modules.base.feature_metadata import FeatureType
 from core.system_manager import SystemManager
 
 app = Flask(__name__)
@@ -70,6 +70,7 @@ def system_status():
 
 @app.route('/feature_monitor', methods=['GET'])
 def feature_monitor():
+    # TODO: Отображение устройств с разным id для одного девайса
     collectors = list(manager.collectors.keys())
     selected_collector = request.args.get('collector', collectors[0] if collectors else '')
     features = []

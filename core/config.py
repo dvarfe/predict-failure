@@ -2,10 +2,11 @@ import platform
 import json
 import os
 
-from collectors import DICT_COLLECTORS
-from models import DICT_MODELS
-from schedulers import DEFAULT_SCHEDULER_PARAMS
-from core.providers import DEFAULT_PROVIDER_TYPE, DEFAULT_PROVIDER_PARAMS
+from modules.collectors import DICT_COLLECTORS
+from modules.models import DICT_MODELS
+from modules.schedulers import DEFAULT_SCHEDULER_PARAMS
+from modules.providers import DEFAULT_PROVIDER_TYPE, DEFAULT_PROVIDER_PARAMS
+
 
 def save_config(config, path):
     if not os.path.exists(os.path.dirname(path)):
@@ -24,7 +25,7 @@ def load_config(path):
     config["collectors"] = {c: {} for c in enabled_collectors}
     config["models"] = list(DICT_MODELS.keys())
     config["scheduler"] = DEFAULT_SCHEDULER_PARAMS
-    config["default_data_provider"] = DEFAULT_PROVIDER_PARAMS.get(DEFAULT_PROVIDER_TYPE, {})
+    config["default_data_provider"] = DEFAULT_PROVIDER_PARAMS
     save_config(config, path)
     return config
 

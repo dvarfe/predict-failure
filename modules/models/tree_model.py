@@ -1,4 +1,4 @@
-from base.model_base import AbstractModel
+from ..base.model_base import AbstractModel
 import pandas as pd
 import numpy as np
 

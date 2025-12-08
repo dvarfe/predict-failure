@@ -4,8 +4,8 @@ import time
 import pandas as pd
 from typing import List, Dict, Any
 
-from base.collector_base import AbstractDataCollector
-from base.feature_metadata import FeatureType, FeatureMetadata
+from ..base.collector_base import AbstractDataCollector
+from ..base.feature_metadata import FeatureType, FeatureMetadata
 
 
 class AbstractCPUDataCollector(AbstractDataCollector):

@@ -1,6 +1,6 @@
 from flask_apscheduler import APScheduler
 from typing import Any
-from base.scheduler_base import SchedulerBase
+from ..base.scheduler_base import SchedulerBase
 
 
 class FlaskScheduler(SchedulerBase):
@@ -37,7 +37,7 @@ class FlaskScheduler(SchedulerBase):
 
         `job_func` вызывается с `selected_collectors` в качестве kwargs.
         """
-        # Для начала удалить существующие задачи, если он есть
+        # Для начала удалить существующие задачи, если они есть
         if self.get_job('data_collection'):
             self.remove_job('data_collection')
 

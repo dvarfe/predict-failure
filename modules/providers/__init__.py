@@ -1,4 +1,4 @@
-from core.data_storage import FileSystemDataProvider
+from .fs_provider import FileSystemDataProvider
 
 
 DICT_DATA_PROVIDERS = {
@@ -10,3 +10,4 @@ DEFAULT_PROVIDER_PARAMS = {
         "base_dir": "storage/data",
     }
 }
+

@@ -5,8 +5,8 @@ import time
 from typing import List, Dict, Any, Optional, Union
 import pandas as pd
 
-from base.collector_base import AbstractDataCollector
-from base.feature_metadata import FeatureType, FeatureMetadata
+from ..base.collector_base import AbstractDataCollector
+from ..base.feature_metadata import FeatureType, FeatureMetadata
 
 from pySMART import Device as PySMART_Device, DeviceList as PySMART_DeviceList  # type: ignore
 from pySMART.interface import AtaAttributes, NvmeAttributes, SCSIAttributes

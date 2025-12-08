@@ -1,8 +1,8 @@
 import pandas as pd
 from core.config import ConfigManager
-from core.providers import DICT_DATA_PROVIDERS, DEFAULT_PROVIDER_PARAMS, DEFAULT_PROVIDER_TYPE
-from schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
-from collectors import DICT_COLLECTORS
+from modules.providers import DICT_DATA_PROVIDERS, DEFAULT_PROVIDER_PARAMS
+from modules.schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
+from modules.collectors import DICT_COLLECTORS
 
 
 class SystemManager:

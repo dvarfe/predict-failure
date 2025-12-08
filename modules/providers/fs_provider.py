@@ -2,7 +2,7 @@ import os
 from typing import Iterable, Optional
 import pandas as pd
 
-from base.data_provider import AbstractDataProvider
+from ..base.data_provider import AbstractDataProvider
 
 
 class FileSystemDataProvider(AbstractDataProvider):

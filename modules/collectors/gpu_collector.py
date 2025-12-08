@@ -10,8 +10,8 @@ import pandas as pd
 import GPUtil
 import pynvml
 
-from base.collector_base import AbstractDataCollector
-from base.feature_metadata import FeatureType, FeatureMetadata
+from ..base.collector_base import AbstractDataCollector
+from ..base.feature_metadata import FeatureType, FeatureMetadata
 
 
 class AbstractGPUProvider(ABC):

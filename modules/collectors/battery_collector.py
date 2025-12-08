@@ -5,8 +5,8 @@ from typing import List, Dict, Any, Optional
 
 import battery
 
-from base.collector_base import AbstractDataCollector
-from base.feature_metadata import FeatureType, FeatureMetadata
+from ..base.collector_base import AbstractDataCollector
+from ..base.feature_metadata import FeatureType, FeatureMetadata
 
 
 class BatteryCollector(AbstractDataCollector):
