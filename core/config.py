@@ -63,6 +63,3 @@ class ConfigManager:
 
     def save_config(self, config: dict = None, path: str = "storage/configs/config.json"):
         save_config(config, path)
-
-    def __del__(self):
-        self.save_config(self.config, self.path)
