@@ -43,7 +43,13 @@ class GlobalFileSystemProvider(AbstractDataProvider):
 
     def load_dataframe(self, name: str, start_time: Optional[float] = None, end_time: Optional[float] = None, device: Optional[str] = None) -> Optional[pd.DataFrame]:
         if device:
-            path = self._dataset_path(device, name)
+            # При вызове без имени набора данных, загружаем последний по дате изменения
+            if not name:
+                dpath = os.path.join(self.base_dir, device)
+                csvs = [os.path.join(dpath, f) for f in os.listdir(dpath) if f.endswith('.csv')]
+                path = max(csvs, key=os.path.getmtime)
+            else:
+                path = self._dataset_path(device, name)
         else:
             path = name
 
