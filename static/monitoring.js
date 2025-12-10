@@ -42,7 +42,7 @@ function getPlotlyLayout(selectedFeature, metadata) {
             tickfont: { color: '#eee' },
             gridcolor: '#444',
             showgrid: true,
-            tickformat: metadata?.unit === 'bytes' ? '.2s' : undefined 
+            tickformat: metadata?.unit === 'bytes' ? '.2s' : undefined
         },
         plot_bgcolor: 'rgba(0,0,0,0)',
         paper_bgcolor: 'rgba(0,0,0,0)',
@@ -71,10 +71,17 @@ function createFeatureChart(chartData, selectedFeature) {
             .map((deviceData, index) => createTrace(deviceData, index, selectedFeature, metadata))
             .filter(trace => trace !== null);
 
-        const layout = getPlotlyLayout(selectedFeature, metadata);
-        const config = PLOTLY_CONFIG;
+        const baseLayout = window.plotlyHelpers ? window.plotlyHelpers.getDefaultSurvivalLayout(selectedFeature) : getPlotlyLayout(selectedFeature, metadata);
+        baseLayout.title.text = metadata?.description || selectedFeature;
+        baseLayout.yaxis.title.text = (metadata?.description || selectedFeature) + (metadata?.unit ? ` (${metadata.unit})` : '');
+        if (metadata?.unit === 'bytes') baseLayout.yaxis.tickformat = '.2s';
 
-        Plotly.newPlot('featureChart', traces, layout, config);
+        const config = PLOTLY_CONFIG;
+        if (window.plotlyHelpers) {
+            window.plotlyHelpers.plotTraces('featureChart', traces, baseLayout, config);
+        } else {
+            Plotly.newPlot('featureChart', traces, baseLayout, config);
+        }
     }
 }
 

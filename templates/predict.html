@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="w-100">
+    <div class="card bg-dark text-light mb-4">
+        <div class="card-body">
+            <h3 class="card-title">Построение прогноза — кривые выживания</h3>
+            <p class="small text-muted">Выберите устройство, датасет и модель, затем id для прогноза.</p>
+
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Устройство</label>
+                    <select id="device" class="form-select"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Датасет</label>
+                    <select id="dataset" class="form-select"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Модель</label>
+                    <select id="model" class="form-select"></select>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-12">
+                    <label class="form-label">Выберите id (можно несколько)</label>
+                    <select id="ids" multiple style="width:100%"></select>
+                    <div class="small text-muted">Начните вводить id; список загружается динамически.</div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-auto">
+                    <button id="predictBtn" class="btn">Построить прогноз</button>
+                    <span id="status" class="ms-3"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div id="plot" style="width:100%;height:400px;"></div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="{{ url_for('static', filename='plotly_helpers.js') }}"></script>
+
+
+<script>
+    function setStatus(msg, busy) {
+        const s = document.getElementById('status');
+        s.textContent = msg || '';
+        if (busy) {
+            const spinner = document.createElement('span');
+            spinner.className = 'pf-spinner ms-2';
+            s.appendChild(spinner);
+        }
+    }
+
+    $(function () {
+        $('#ids').select2({
+            placeholder: 'Выберите id',
+            allowClear: true,
+            minimumInputLength: 0,
+            ajax: {
+                transport: function (params, success, failure) {
+                    const q = params.data.q || '';
+                    const device = $('#device').val() || '';
+                    const dataset = $('#dataset').val() || '';
+                    const url = `/api/ids?q=${encodeURIComponent(q)}&device=${encodeURIComponent(device)}&dataset=${encodeURIComponent(dataset)}`;
+                    fetch(url).then(r => r.json()).then(success).catch(failure);
+                },
+                processResults: function (data) {
+                    if (!data) return { results: [] };
+                    if (Array.isArray(data)) {
+                        return {
+                            results: data.map(function (item) {
+                                if (typeof item === 'string') return { id: item, text: item };
+                                if (item.id !== undefined) return { id: item.id, text: item.text || item.id };
+                                if (item.value !== undefined) return { id: item.value, text: item.text || item.value };
+                                return { id: item, text: String(item) };
+                            })
+                        };
+                    }
+                    if (data.results) return { results: data.results };
+                    return { results: [] };
+                }
+            }
+        });
+
+        function loadOptions(endpoint, $sel, placeholder) {
+            $sel.empty();
+            $sel.append($('<option>').text(placeholder).attr('value', ''));
+            fetch(endpoint).then(r => r.json()).then(function (data) {
+                if (!data) return;
+                data.forEach(function (it) {
+                    let val, text;
+                    if (typeof it === 'string') { val = it; text = it }
+                    else if (it.value !== undefined) { val = it.value; text = it.text || it.value }
+                    else if (it.id !== undefined) { val = it.id; text = it.text || it.id }
+                    else { val = it; text = String(it) }
+                    $sel.append($('<option>').attr('value', val).text(text));
+                });
+            }).catch(function (err) { console.warn('Failed to load', endpoint, err) });
+        }
+
+        loadOptions('/api/devices', $('#device'), 'Выберите устройство');
+        function loadModelsForDevice(device) {
+            const $sel = $('#model');
+            $sel.empty();
+            $sel.append($('<option>').text('Выберите модель').attr('value', ''));
+            const url = device ? `/api/models?device=${encodeURIComponent(device)}` : '/api/models';
+            fetch(url).then(r => r.json()).then(function (data) {
+                if (!data) return;
+                data.forEach(function (it) {
+                    const val = (it && it.value) ? it.value : (typeof it === 'string' ? it : (it.id || String(it)));
+                    let display = null;
+                    if (it && it.text) {
+                        display = it.text;
+                    } else if (typeof it === 'string') {
+                        display = it;
+                    } else if (it && (it.id || it.value)) {
+                        display = it.id || it.value;
+                    } else {
+                        display = String(it);
+                    }
+                    if (typeof display === 'string') {
+                        if (display.includes('::')) display = display.split('::').pop().trim();
+                        else if (display.includes(' :: ')) display = display.split(' :: ').pop().trim();
+                    }
+                    // If parsing from value provides a cleaner name, prefer it
+                    if (typeof val === 'string' && val.includes('::')) {
+                        const nameFromVal = val.split('::').pop().trim();
+                        if (nameFromVal) display = nameFromVal;
+                    }
+
+                    $sel.append($('<option>').attr('value', val).text(display));
+                });
+            }).catch(function (err) { console.warn('Failed to load models for', device, err) });
+        }
+
+        loadModelsForDevice(null);
+
+        function loadDatasetsForDevice(device) {
+            const $sel = $('#dataset');
+            $sel.empty();
+            $sel.append($('<option>').text('Выберите датасет').attr('value', ''));
+            if (!device) return;
+            fetch(`/api/datasets?device=${encodeURIComponent(device)}`).then(r => r.json()).then(function (data) {
+                if (!data) return;
+                data.forEach(function (it) {
+                    const val = typeof it === 'string' ? it : (it.value || it.id || String(it));
+                    const text = typeof it === 'string' ? it : (it.text || it.id || String(it));
+                    $sel.append($('<option>').attr('value', val).text(text));
+                });
+            }).catch(function (err) { console.warn('Failed to load datasets for', device, err) });
+        }
+
+        $('#device').on('change', function () {
+            const device = $(this).val();
+            loadDatasetsForDevice(device);
+            loadModelsForDevice(device);
+            $('#ids').val(null).trigger('change');
+        });
+
+        const initialDevice = $('#device').val();
+        if (initialDevice) loadDatasetsForDevice(initialDevice);
+
+        $('#predictBtn').on('click', function () {
+            const device = $('#device').val();
+            const dataset = $('#dataset').val();
+            const model = $('#model').val();
+            const ids = $('#ids').val() || [];
+
+            if (!device || !dataset || !model) {
+                alert('Пожалуйста, выберите устройство, датасет и модель.');
+                return;
+            }
+            if (ids.length === 0) {
+                if (!confirm('Вы не выбрали id. Хотите построить прогноз для всех доступных id?')) return;
+            }
+
+            const payload = { device: device, dataset: dataset, model: model, ids: ids };
+            setStatus('Запрос прогноза...', true);
+            $('#predictBtn').prop('disabled', true).addClass('opacity-75');
+
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function (resp) {
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return resp.json();
+            }).then(function (result) {
+                setStatus('');
+                $('#predictBtn').prop('disabled', false).removeClass('opacity-75');
+                renderCurves(result);
+            }).catch(function (err) {
+                console.error(err);
+                setStatus('Ошибка: ' + (err.message || err));
+                $('#predictBtn').prop('disabled', false).removeClass('opacity-75');
+                alert('Ошибка при запросе прогноза. Посмотрите консоль для подробностей.');
+            });
+        });
+
+        function renderCurves(data) {
+            const curves = data.curves || data;
+            if (!curves) {
+                alert('Пустой ответ');
+                return;
+            }
+            window.plotlyHelpers.plotSurvival('plot', curves, 'Кривые выживания');
+        }
+    });
+</script>
+
+{% endblock %}

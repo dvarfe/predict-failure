@@ -6,6 +6,8 @@ from datetime import datetime
 import onnx
 
 from ..base.model_storage_base import AbstractModelStorage
+from ..models.dummy_const_model import DummyConstModel  # TODO: убрать всё, что с этим связано
+from ..models.dummy_rand_model import DummyRandModel
 
 
 class ModelStorage(AbstractModelStorage):
@@ -18,10 +20,11 @@ class ModelStorage(AbstractModelStorage):
         return os.path.join(self.storage_dir, base_name)
 
     def list_models(self):
-        index = self._read_index()
+        dummy = ['DummyConstModel']
+        index = self.read_index()
         if index:
-            return list(index.keys())
-        return []
+            return list(index.keys()) + dummy
+        return dummy
 
     def _index_path(self) -> str:
         return os.path.join(self.storage_dir, 'index.json')
@@ -47,6 +50,10 @@ class ModelStorage(AbstractModelStorage):
 
     def load(self, name: str):
         base_name = name
+        if base_name == 'DummyConstModel':
+            return DummyConstModel()
+        elif base_name == 'DummyRandModel':
+            return DummyRandModel()
         folder = self._model_folder(base_name)
         cfg = self._read_model_config(folder)
         ext = cfg.get('ext', '')

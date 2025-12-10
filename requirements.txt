@@ -8,3 +8,4 @@ nvidia-ml-py3==13.580.82
 battery==1.0.4
 lifelines==0.30.0
 survivors==1.7.2
+onnx==1.20.0

@@ -1,11 +1,12 @@
 import os
 import pandas as pd
-from flask import Flask, render_template, redirect, send_file
+from flask import Flask, render_template, redirect
 from flask import request
 from flask import url_for
 
 from modules.base.feature_metadata import FeatureType
 from core.system_manager import SystemManager
+from flask import jsonify
 
 app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
@@ -68,6 +69,134 @@ def system_status():
     return render_template('system_status.html', status=status)
 
 
+@app.route('/predict', methods=['GET'])
+def predict():
+    return render_template('predict.html')
+
+
+@app.route('/api/devices', methods=['GET'])
+def api_devices():
+    devices = manager.list_devices()
+    return jsonify(devices)
+
+
+@app.route('/api/datasets', methods=['GET'])
+def api_datasets():
+    device = request.args.get('device')
+    datasets = manager.list_datasets(device=device)
+    if device:
+        return jsonify(datasets.get(device, []))
+    return jsonify(datasets)
+
+
+@app.route('/api/models', methods=['GET'])
+def api_models():
+    models_index = manager.get_all_device_models()
+    device_filter = request.args.get('device', 'general')
+    out = []
+    for device, models in models_index.items():
+        if device == 'general' or (device_filter and device == device_filter):
+            for m in models:
+                name = m.get('name')
+                if device != 'general' and name.startswith('Dummy'):
+                    continue
+                value = f"{device}::{name}" if device else name
+                text = f"{device} :: {name}" if device else name
+                out.append({'value': value, 'text': text})
+    return jsonify(out)
+
+
+@app.route('/api/ids', methods=['GET'])
+def api_ids():
+    q = request.args.get('q', '')  # Запрос пользователя, по которой фильтруюется выдача
+    collector = request.args.get('device')
+    dataset = request.args.get('dataset')
+
+    if not dataset:
+        return jsonify([])
+
+    df = manager.load_dataframe(dataset, device=collector)
+
+    id_col = manager.get_id_col(collector)
+    if id_col and id_col in df.columns:
+        ids = df[id_col].dropna().unique().tolist()
+        ids = [str(x) for x in ids]
+        if q:
+            ids = [x for x in ids if q.lower() in x.lower()]
+    else:
+        ids = []
+    return jsonify(ids)
+
+
+def _build_curves_from_preds(data_df, preds, device=None):
+    curves = {}
+
+    cols = list(preds.columns)
+    times = [float(c) for c in cols if c != 'id']
+
+    preds = preds.groupby('id').mean()
+
+    for idx, row in preds.iterrows():
+        curves[str(idx)] = {'time': times, 'survival': list(row.astype(float).tolist())}
+
+    return curves
+
+
+@app.route('/api/predict', methods=['POST'])
+def api_predict():
+    payload = request.get_json() or {}
+    device = payload.get('device') or payload.get('collector')
+    dataset = payload.get('dataset')
+    model_selected = payload.get('model')
+    ids = payload.get('ids') or []
+
+    if not device or not dataset or not model_selected:
+        return jsonify({'error': 'device, dataset and model are required'}), 400
+
+    model_name = None
+    model_device = None
+    if model_selected and '::' in model_selected:
+        model_device, model_name = model_selected.split('::', 1)
+    else:
+        model_name = model_selected
+
+    data = manager.load_dataframe(dataset, device=device)
+
+    id_col = manager.get_id_col(device)
+
+    if ids and 'all' not in ids and id_col:
+        data = data[data[id_col].astype(str).isin([str(x) for x in ids])]
+    if 'general' == model_device:
+        preds = manager.apply_model(model_name, data, id_col=id_col)
+    else:
+        preds = manager.predict_survival(model_device, model_name, data)
+    print(id_col)
+    curves = _build_curves_from_preds(data, preds, device)
+
+    return jsonify({'curves': curves}), 200
+
+
+@app.route('/predict/device_ids', methods=['POST'])
+def predict_device_ids():
+    data = request.get_json() or {}
+    collector = data.get('collector')
+    dataset = data.get('dataset')
+
+    if not collector:
+        return jsonify({'error': 'collector required', 'device_ids': []}), 400
+
+    df = manager.load_dataframe(dataset, device=collector)
+
+    id_col = manager.get_id_col(collector)
+    if id_col and id_col in df.columns:
+        ids = df[id_col].dropna().unique().tolist()
+        ids = [str(x) for x in ids]
+    else:
+        ids = []
+
+    return jsonify({'device_ids': ids}), 200
+
+
 @app.route('/feature_monitor', methods=['GET'])
 def feature_monitor():
     # TODO: Отображение устройств с разным id для одного девайса
@@ -115,7 +244,7 @@ def feature_monitor():
                     continue
 
                 device_df = df[df[device_id_column] == device_id]
-                
+
                 if 'device_name' in device_df.columns and not pd.isna(device_df['device_name'].iloc[0]):
                     device_name = str(device_df['device_name'].iloc[0])
                 else:

@@ -11,6 +11,7 @@ class GlobalFileSystemProvider(AbstractDataProvider):
         super().__init__(provider_type=provider_type, device_name=None)
         self.base_dir = base_dir
         os.makedirs(self.base_dir, exist_ok=True)
+        pass
 
     def list_devices(self) -> List[str]:
         return [name for name in os.listdir(self.base_dir) if os.path.isdir(os.path.join(self.base_dir, name))]
