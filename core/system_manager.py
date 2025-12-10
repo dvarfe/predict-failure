@@ -4,7 +4,7 @@ from modules.providers import DICT_DATA_PROVIDERS, DEFAULT_PROVIDER_PARAMS
 from modules.providers.global_fs_provider import GlobalFileSystemProvider  # TODO: Избавиться от захардкоженного провайдера
 from modules.schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
 from modules.collectors import DICT_COLLECTORS
-from modules.model_storage import DEFAULT_MODEL_STORAGE_PARAMS, DICT_MODEL_STORAGES
+from modules.model_storage import ModelStorage, DICT_MODEL_STORAGES
 from typing import Optional
 from modules.base.feature_metadata import FeatureType
 
@@ -12,12 +12,13 @@ from modules.base.feature_metadata import FeatureType
 class SystemManager:
     def __init__(self, app=None):
         self.config_manager = ConfigManager()
-        self.model_storages = {}  # Словарь хранилищ моделей для каждого устройства
         self.predictions = {}
         self._id_col_cache = {}
         self.fs_provider = GlobalFileSystemProvider()
         self._last_dataset_key = None
         self._last_dataset_df = None
+
+        self.global_model_storage = ModelStorage()
         self.setup_config(app)
 
     def setup_collectors(self):
@@ -32,10 +33,6 @@ class SystemManager:
 
             provider = self.create_data_provider(name, config)
             collector_obj.set_data_provider(provider)
-
-            model_storage = self.create_model_storage(name, config)
-            self.model_storages[name] = model_storage
-
             self.collectors[name] = collector_obj
 
     def create_data_provider(self, device_name: str, config: dict):
@@ -49,22 +46,6 @@ class SystemManager:
 
         Provider = DICT_DATA_PROVIDERS.get(p_type)
         return Provider(**p_cfg)
-
-    def create_model_storage(self, device_name: str, config: dict):
-        global_storage_cfg = self.config_manager.get_config().get(
-            'default_model_storage', DEFAULT_MODEL_STORAGE_PARAMS)
-        global_storage_type = list(global_storage_cfg.keys())[0]
-
-        storage_cfg = config.get('model_storage', global_storage_cfg)
-        storage_type = list(storage_cfg.keys())[0] if storage_cfg else global_storage_type
-        storage_params = storage_cfg.get(storage_type, {})
-
-        # Добавляем имя устройства к пати хранилища
-        base_dir = storage_params.get('storage_dir', 'storage/models')
-        storage_params = {**storage_params, 'storage_dir': f'{base_dir}/{device_name}'}
-
-        StorageClass = DICT_MODEL_STORAGES.get(storage_type, DICT_MODEL_STORAGES["default"])
-        return StorageClass(**storage_params)
 
     def setup_scheduler(self, app=None):
         sched_cfg = self.config_manager.get_scheduler()
@@ -145,15 +126,7 @@ class SystemManager:
     def apply_model(self, model_name: str, data: pd.DataFrame, id_col: Optional[str] = None):
         if data is None:
             raise ValueError("Нет данных для применения модели")
-
-        storage_cfg = DEFAULT_MODEL_STORAGE_PARAMS
-        storage_type = list(storage_cfg.keys())[0]
-        storage_params = storage_cfg.get(storage_type, {})
-
-        StorageClass = DICT_MODEL_STORAGES.get(storage_type, DICT_MODEL_STORAGES["default"])
-        storage = StorageClass(**storage_params)
-
-        model = storage.load(model_name)
+        model = self.global_model_storage.load(model_name)
 
         preds = model.predict(data, id_col=id_col)
 
@@ -162,36 +135,21 @@ class SystemManager:
         self.predictions[model_name] = preds
         return preds
 
-    def save_model(self, device_name: str, model_name: str, model) -> str:
-        if device_name not in self.model_storages:
-            raise RuntimeError(f"Model storage for device '{device_name}' not initialized!")
-        return self.model_storages[device_name].save(model_name, model)
+    def save_model(self, model_name: str, model) -> str:
+        return self.global_model_storage.save(model_name, model)
 
     def load_model(self, device_name: str, model_name: str):
-        return self.model_storages[device_name].load(model_name)
+        if device_name and device_name != 'general' and '/' not in model_name:
+            path = f"{device_name}/{model_name}"
+        else:
+            path = model_name
+        return self.global_model_storage.load(path)
 
-    def list_models(self, device_name: str) -> list:
-        if device_name not in self.model_storages:
-            raise RuntimeError(f"Model storage for device '{device_name}' not initialized!")
-        return self.model_storages[device_name].list_models()
+    def list_models(self) -> list:
+        return self.global_model_storage.list_models()
 
-    def get_all_device_models(self) -> dict:
-        result = {}
-        result['general'] = [
-            {'filename': 'DummyConstModel', 'name': 'DummyConstModel'},
-            {'filename': 'DummyRandModel', 'name': 'DummyRandModel'},
-        ]
-
-        for device_name, storage in self.model_storages.items():
-            models_list = []
-            for model_filename in storage.list_models():
-                models_list.append({'filename': model_filename, 'name': model_filename})
-
-            if models_list:
-                if device_name not in result:
-                    result[device_name] = []
-                result[device_name] += models_list
-        return result
+    def get_models(self) -> dict:
+        return self.global_model_storage.list_models()
 
     def get_id_col(self, collector_name: str) -> Optional[str]:
         if collector_name in self._id_col_cache:

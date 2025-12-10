@@ -111,30 +111,15 @@
             const $sel = $('#model');
             $sel.empty();
             $sel.append($('<option>').text('Выберите модель').attr('value', ''));
-            const url = device ? `/api/models?device=${encodeURIComponent(device)}` : '/api/models';
+            const dev = device || 'general';
+            const url = `/api/models?device=${encodeURIComponent(dev)}`;
             fetch(url).then(r => r.json()).then(function (data) {
-                if (!data) return;
-                data.forEach(function (it) {
-                    const val = (it && it.value) ? it.value : (typeof it === 'string' ? it : (it.id || String(it)));
-                    let display = null;
-                    if (it && it.text) {
-                        display = it.text;
-                    } else if (typeof it === 'string') {
-                        display = it;
-                    } else if (it && (it.id || it.value)) {
-                        display = it.id || it.value;
-                    } else {
-                        display = String(it);
-                    }
-                    if (typeof display === 'string') {
-                        if (display.includes('::')) display = display.split('::').pop().trim();
-                        else if (display.includes(' :: ')) display = display.split(' :: ').pop().trim();
-                    }
-                    if (typeof val === 'string' && val.includes('::')) {
-                        const nameFromVal = val.split('::').pop().trim();
-                        if (nameFromVal) display = nameFromVal;
-                    }
+                if (!data || typeof data !== 'object') return;
 
+                Object.keys(data).forEach(function (modelName) {
+                    const meta = data[modelName] || {};
+                    const display = meta.name || meta.text || modelName;
+                    const val = (dev === 'general') ? (`general::${modelName}`) : (`${dev}::${modelName}`);
                     $sel.append($('<option>').attr('value', val).text(display));
                 });
             }).catch(function (err) { console.warn('Failed to load models for', device, err) });

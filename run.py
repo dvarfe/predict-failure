@@ -91,18 +91,9 @@ def api_datasets():
 
 @app.route('/api/models', methods=['GET'])
 def api_models():
-    models_index = manager.get_all_device_models()
+    models_index = manager.get_models()
     device_filter = request.args.get('device', 'general')
-    out = []
-    for device, models in models_index.items():
-        if device == 'general' or (device_filter and device == device_filter):
-            for m in models:
-                name = m.get('name')
-                if device != 'general' and name.startswith('Dummy'):
-                    continue
-                value = f"{device}::{name}" if device else name
-                text = f"{device} :: {name}" if device else name
-                out.append({'value': value, 'text': text})
+    out = models_index.get(device_filter, [])
     return jsonify(out)
 
 
@@ -319,4 +310,4 @@ def stop_schedule():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, threaded=True, host='0.0.0.0', port=11111)
+    app.run(debug=False, threaded=False, host='0.0.0.0', port=11111)

@@ -20,11 +20,7 @@ class ModelStorage(AbstractModelStorage):
         return os.path.join(self.storage_dir, base_name)
 
     def list_models(self):
-        dummy = ['DummyConstModel']
-        index = self.read_index()
-        if index:
-            return list(index.keys()) + dummy
-        return dummy
+        return self.read_index()
 
     def _index_path(self) -> str:
         return os.path.join(self.storage_dir, 'index.json')
@@ -50,19 +46,23 @@ class ModelStorage(AbstractModelStorage):
 
     def load(self, name: str):
         base_name = name
-        if base_name == 'DummyConstModel':
+        if base_name.endswith('DummyConstModel'):
             return DummyConstModel()
-        elif base_name == 'DummyRandModel':
+        elif base_name.endswith('DummyRandModel'):
             return DummyRandModel()
-        folder = self._model_folder(base_name)
-        cfg = self._read_model_config(folder)
-        ext = cfg.get('ext', '')
-        if ext == '.onnx':
-            return onnx.load(os.path.join(folder, f"{base_name}{ext}"))
-        elif ext == '.pkl' or ext == '':
-            return pickle.load(open(os.path.join(folder, f"{base_name}{ext}"), 'rb'))
+
+        if '/' not in base_name:
+            raise ValueError(f"Model name must be in 'device/model.ext' format, got '{name}'")
+
+        full_path = os.path.join(self.storage_dir, base_name)
+        if not os.path.isfile(full_path):
+            raise FileNotFoundError(f"Model file for '{name}' not found at '{full_path}'")
+
+        _, ext = os.path.splitext(full_path)
+        if ext.lower() == '.onnx':
+            return onnx.load(full_path)
         else:
-            raise ValueError(f"Unknown model extension '{ext}' for model '{name}'")
+            return pickle.load(open(full_path, 'rb'))
 
     def save(self, name: str, model) -> str:
         base_name = name
@@ -105,3 +105,24 @@ class ModelStorage(AbstractModelStorage):
         self._write_index(index)
 
         return os.path.join(folder, f"{base_name}{file_ext}")
+
+    def list_datasets(self) -> dict:
+        result = {}
+        index = self.read_index()
+
+        return result
+
+    def register_model(self, device: str, model_path: str, meta: dict = None) -> None:
+        if meta is None:
+            meta = {}
+
+        index = self.read_index()
+        if not isinstance(index, dict):
+            index = {}
+
+        if device not in index or not isinstance(index[device], dict):
+            index[device] = {}
+        # store the model entry under the device using the provided model_path
+        index[device][model_path] = meta or {}
+
+        self._write_index(index)
