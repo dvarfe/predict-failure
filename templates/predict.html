@@ -130,7 +130,6 @@
                         if (display.includes('::')) display = display.split('::').pop().trim();
                         else if (display.includes(' :: ')) display = display.split(' :: ').pop().trim();
                     }
-                    // If parsing from value provides a cleaner name, prefer it
                     if (typeof val === 'string' && val.includes('::')) {
                         const nameFromVal = val.split('::').pop().trim();
                         if (nameFromVal) display = nameFromVal;

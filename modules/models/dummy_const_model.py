@@ -21,7 +21,7 @@ class DummyConstModel(AbstractModel):
             columns=[f"{t}" for t in times]
         )
         if id_col is not None and id_col in data.columns:
-            survival_functions[id_col] = data[id_col].astype(str).values
+            survival_functions['id'] = data[id_col].astype(str).values
         else:
             survival_functions['id'] = data.index.astype(str).values
 

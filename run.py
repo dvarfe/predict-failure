@@ -128,11 +128,11 @@ def api_ids():
     return jsonify(ids)
 
 
-def _build_curves_from_preds(data_df, preds, device=None):
+def _build_curves_from_preds(preds):
     curves = {}
-
-    cols = list(preds.columns)
-    times = [float(c) for c in cols if c != 'id']
+    print(preds.columns)
+    cols = list(preds.drop(columns=['id']).columns)
+    times = [float(c) for c in cols]
 
     preds = preds.groupby('id').mean()
 
@@ -171,7 +171,7 @@ def api_predict():
     else:
         preds = manager.predict_survival(model_device, model_name, data)
     print(id_col)
-    curves = _build_curves_from_preds(data, preds, device)
+    curves = _build_curves_from_preds(preds)
 
     return jsonify({'curves': curves}), 200
 
@@ -319,4 +319,4 @@ def stop_schedule():
 
 
 if __name__ == '__main__':
-    app.run(debug=False, threaded=True, host='0.0.0.0', port=11111)
+    app.run(debug=True, threaded=True, host='0.0.0.0', port=11111)

@@ -24,7 +24,7 @@ class DummyRandModel(AbstractModel):
         cols = [f"{t}" for t in times]
         df = pd.DataFrame(data=surv_np, index=range(n_samples), columns=cols)
         if id_col is not None and id_col in data.columns:
-            df[id_col] = data[id_col].astype(str).values
+            df['id'] = data[id_col].astype(str).values
         else:
             df['id'] = data.index.astype(str).values
 
