@@ -1,6 +1,9 @@
 from .model_storage import ModelStorage
+from .torch_data_storage import TorchDataStorage
+
 DICT_MODEL_STORAGES = {
     "default": ModelStorage,
+    "torch": TorchDataStorage,
 }
 
 DEFAULT_MODEL_STORAGE_TYPE = "default"

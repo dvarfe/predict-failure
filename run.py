@@ -119,16 +119,25 @@ def api_ids():
     return jsonify(ids)
 
 
-def _build_curves_from_preds(preds):
+def _build_curves_from_preds(preds, id_col='id'):
     curves = {}
-    print(preds.columns)
-    cols = list(preds.drop(columns=['id']).columns)
-    times = [float(c) for c in cols]
 
-    preds = preds.groupby('id').mean()
+    cols = list(preds.columns.drop([id_col], errors='ignore'))
+    if 'time' in cols:
+        cols.remove('time')
 
-    for idx, row in preds.iterrows():
-        curves[str(idx)] = {'time': times, 'survival': list(row.astype(float).tolist())}
+    times = []
+    time_cols = []
+    for c in cols:
+        times.append(float(c))
+        time_cols.append(c)
+
+
+    preds_grouped = preds.groupby(id_col).mean()
+
+    for idx, row in preds_grouped.iterrows():
+        survival_vals = [float(row[c]) for c in time_cols]
+        curves[str(idx)] = {'time': times, 'survival': survival_vals}
 
     return curves
 
@@ -162,7 +171,7 @@ def api_predict():
     else:
         preds = manager.predict_survival(model_device, model_name, data)
     print(id_col)
-    curves = _build_curves_from_preds(preds)
+    curves = _build_curves_from_preds(preds, id_col=id_col)
 
     return jsonify({'curves': curves}), 200
 

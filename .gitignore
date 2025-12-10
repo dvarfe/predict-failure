@@ -3,3 +3,5 @@
 storage/configs
 storage/data
 storage/models
+train_sp.py
+train_cox.py

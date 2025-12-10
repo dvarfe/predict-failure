@@ -8,6 +8,10 @@ from modules.model_storage import ModelStorage, DICT_MODEL_STORAGES
 from typing import Optional
 from modules.base.feature_metadata import FeatureType
 
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader
+
 
 class SystemManager:
     def __init__(self, app=None):
@@ -170,7 +174,56 @@ class SystemManager:
     def predict_survival(self, device_name: str, model_name: str, data: pd.DataFrame) -> pd.Series:
         model = self.load_model(device_name, model_name)
         id_col = self.get_id_col(device_name)
-        return model.predict(data, id_col=id_col)
+        df = data.copy()
+
+        time_col = 'time' if 'time' in df.columns else 'timestamp' if 'timestamp' in df.columns else None
+
+        if 'duration' not in df.columns:
+            if 'max_lifetime' in df.columns and time_col is not None:
+                df['duration'] = df['max_lifetime'] - df[time_col]
+            else:
+                df['duration'] = -1
+
+        if 'failure' not in df.columns:
+            if 'event' in df.columns:
+                df['failure'] = df['event']
+            else:
+                df['failure'] = 0
+
+        exclude = {id_col, time_col, 'failure', 'event', 'duration', 'max_lifetime'}
+        feature_cols = [c for c in df.columns if c not in exclude]
+
+        class DataFrameDataset(Dataset):
+            def __init__(self, df, id_col, time_col, feature_cols):
+                self.df = df.reset_index(drop=True)
+                self.id_col = id_col
+                self.time_col = time_col
+                self.feature_cols = feature_cols
+
+            def __len__(self):
+                return len(self.df)
+
+            def __getitem__(self, idx):
+                row = self.df.iloc[idx]
+                serial = str(row[self.id_col])
+                t = int(row[self.time_col]) if self.time_col in self.df.columns and not pd.isna(
+                    row[self.time_col]) else 0
+                if self.feature_cols:
+                    X = row[self.feature_cols].astype('float32').values
+                    X_t = torch.from_numpy(X)
+                else:
+                    X_t = torch.tensor([], dtype=torch.float32)
+                y = int(row['failure'])
+                duration = int(row['duration']) if not pd.isna(row['duration']) else -1
+                return serial, t, X_t, y, duration
+
+        dataset = DataFrameDataset(df, id_col, time_col, feature_cols)
+        dataloader = DataLoader(dataset, batch_size=256, shuffle=False)
+
+        times = np.arange(1, 10)
+        result = model.predict(dataloader, times)
+
+        return result[0]
 
     def list_datasets(self, device: str = None):
         return self.fs_provider.list_datasets(device=device)

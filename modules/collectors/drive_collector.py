@@ -25,7 +25,7 @@ class AbstractDriveDataCollector(AbstractDataCollector):
         """Метаданные всех признаков дисков"""
         return {
             "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
-            "device": FeatureMetadata("device", FeatureType.IDENTIFIER, "", "Устройство диска"),
+            "device": FeatureMetadata("device", FeatureType.CATEGORICAL, "", "Устройство диска"),
             "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель диска"),
             "serial_number": FeatureMetadata("serial_number", FeatureType.IDENTIFIER, "", "Серийный номер диска"),
             "model_name": FeatureMetadata("model_name", FeatureType.CATEGORICAL, "", "Модель диска"),
