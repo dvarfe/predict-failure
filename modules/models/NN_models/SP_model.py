@@ -1,4 +1,4 @@
-from typing import Optional, Set, Tuple, List
+from typing import Optional, Set, Tuple, List, Union
 import time
 import copy
 
@@ -220,7 +220,7 @@ class SurvPredictor():
                 writer.add_scalar('Loss/train_epoch', avg_epoch_loss, epoch)
                 writer.add_scalar('Time/epoch', epoch_time, epoch)
 
-    def predict(self, dataloader: DataLoader | pd.DataFrame,
+    def predict(self, dataloader: Union[DataLoader, pd.DataFrame],
                 times: Optional[np.ndarray] = TIMES,
                 id_col: Optional[str] = None,
                 time_col: str = 'time',

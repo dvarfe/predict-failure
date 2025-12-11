@@ -5,9 +5,10 @@ from lifelines import CoxTimeVaryingFitter, CoxPHFitter
 from lifelines.exceptions import ConvergenceError
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from typing import Optional
 
 
-def _clean_df_for_cox(df: pd.DataFrame, keep_cols: list | None = None) -> pd.DataFrame:
+def _clean_df_for_cox(df: pd.DataFrame, keep_cols: Optional[list] = None) -> pd.DataFrame:
     """Sanitize DataFrame before fitting Cox models.
 
     - Replace inf/-inf with NaN

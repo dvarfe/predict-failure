@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import pickle
 import pandas as pd
+from typing import Optional
 
 
 class AbstractModel(ABC):
@@ -11,7 +12,7 @@ class AbstractModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, data: pd.DataFrame, times=None, id_col: str | None = None) -> pd.DataFrame:
+    def predict(self, data: pd.DataFrame, times=None, id_col: Optional[str] = None) -> pd.DataFrame:
         """Сделать прогноз (например, функция выживания, риск).
 
         Parameters:

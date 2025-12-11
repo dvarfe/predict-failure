@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from typing import Optional
 from ..base.model_base import AbstractModel
 
 
@@ -9,7 +10,7 @@ class DummyConstModel(AbstractModel):
         self.surv_const = 1.0
         self.is_fitted = False
 
-    def predict(self, data: pd.DataFrame, times: np.ndarray = None, id_col: str | None = None) -> pd.DataFrame:
+    def predict(self, data: pd.DataFrame, times: np.ndarray = None, id_col: Optional[str] = None) -> pd.DataFrame:
         if times is None:
             times = np.arange(0, 11)
 
