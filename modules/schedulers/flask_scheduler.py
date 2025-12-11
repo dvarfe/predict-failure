@@ -1,5 +1,6 @@
 from flask_apscheduler import APScheduler
 from typing import Any
+from datetime import datetime, timedelta
 from ..base.scheduler_base import SchedulerBase
 
 
@@ -55,11 +56,25 @@ class FlaskScheduler(SchedulerBase):
             elif interval_unit == 'days':
                 scheduler_kwargs['days'] = interval_value
 
+            ###########################################################################
+            # Ограничить число запусков
+            N_TIMES = 5
+            if interval_unit == 'seconds':
+                end_time = datetime.now() + timedelta(seconds=N_TIMES * interval_value)
+            elif interval_unit == 'minutes':
+                end_time = datetime.now() + timedelta(minutes=N_TIMES * interval_value)
+            elif interval_unit == 'hours':
+                end_time = datetime.now() + timedelta(hours=N_TIMES * interval_value)
+            elif interval_unit == 'days':
+                end_time = datetime.now() + timedelta(days=N_TIMES * interval_value)
+            ############################################################################
+
             self.add_job(
                 id='data_collection',
                 func=job_func,
                 trigger='interval',
                 kwargs={'selected_collectors': schedule_config.get('selected_collectors', [])},
                 replace_existing=True,
+                end_date=end_time,
                 **scheduler_kwargs,
             )
