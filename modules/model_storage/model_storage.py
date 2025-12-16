@@ -51,18 +51,23 @@ class ModelStorage(AbstractModelStorage):
         elif base_name.endswith('DummyRandModel'):
             return DummyRandModel()
 
-        if '/' not in base_name:
-            raise ValueError(f"Model name must be in 'device/model.ext' format, got '{name}'")
-
-        full_path = os.path.join(self.storage_dir, base_name)
-        if not os.path.isfile(full_path):
-            raise FileNotFoundError(f"Model file for '{name}' not found at '{full_path}'")
-
-        _, ext = os.path.splitext(full_path)
-        if ext.lower() == '.onnx':
-            return onnx.load(full_path)
+        if not os.path.isabs(name):
+            if name.startswith('storage/'):
+                model_path = name
+            else:
+                model_path = os.path.join(self.storage_dir, name)
         else:
-            return pickle.load(open(full_path, 'rb'))
+            model_path = name
+
+        # Check if file exists
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+
+        _, ext = os.path.splitext(model_path)
+        if ext.lower() == '.onnx':
+            return onnx.load(model_path)
+        else:
+            return pickle.load(open(model_path, 'rb'))
 
     def save(self, name: str, model) -> str:
         base_name = name
@@ -126,3 +131,85 @@ class ModelStorage(AbstractModelStorage):
         index[device][model_path] = meta or {}
 
         self._write_index(index)
+
+    def save_model(self, model, device: str, model_name: str) -> str:
+        """Сохранить модель для конкретного устройства"""
+        # Создаём папку для устройства
+        device_folder = os.path.join(self.storage_dir, device)
+        os.makedirs(device_folder, exist_ok=True)
+
+        # Путь для модели
+        model_path = os.path.join(device_folder, f"{model_name}.pkl")
+
+        # Сохраняем модель
+        with open(model_path, 'wb') as f:
+            pickle.dump(model, f)
+
+        # Обновляем индекс — теперь индекс хранит модели в виде словаря { device: { model_name: model_info } }
+        index = self.read_index()
+        if device not in index or not isinstance(index[device], dict):
+            index[device] = {}
+
+        model_info = {
+            'name': model_name,
+            'path': model_path,
+            'created_at': datetime.now().isoformat(),
+            'type': type(model).__name__
+        }
+
+        # Сохраняем/перезаписываем модель по ключу model_name
+        index[device][model_name] = model_info
+
+        self._write_index(index)
+        return model_path
+
+    def delete_model(self, device: str, model_name: str) -> bool:
+        """Удалить модель для конкретного устройства"""
+        try:
+            index = self.read_index()
+            if device not in index:
+                return False
+            # Поддерживаем структуру, где index[device] — либо список (legacy), либо dict
+            if isinstance(index[device], list):
+                # legacy: список словарей
+                model_to_delete = None
+                for i, model_info in enumerate(index[device]):
+                    if model_info.get('name') == model_name:
+                        model_to_delete = i
+                        break
+                if model_to_delete is None:
+                    return False
+                model_info = index[device][model_to_delete]
+                if 'path' in model_info and os.path.exists(model_info['path']):
+                    os.remove(model_info['path'])
+                del index[device][model_to_delete]
+                if len(index[device]) == 0:
+                    device_folder = os.path.join(self.storage_dir, device)
+                    if os.path.exists(device_folder):
+                        try:
+                            os.rmdir(device_folder)
+                        except OSError:
+                            pass
+                    del index[device]
+            else:
+                # Современный формат: словарь model_name -> model_info
+                if model_name not in index[device]:
+                    return False
+                model_info = index[device][model_name]
+                if 'path' in model_info and os.path.exists(model_info['path']):
+                    os.remove(model_info['path'])
+                del index[device][model_name]
+                if len(index[device]) == 0:
+                    device_folder = os.path.join(self.storage_dir, device)
+                    if os.path.exists(device_folder):
+                        try:
+                            os.rmdir(device_folder)
+                        except OSError:
+                            pass
+                    del index[device]
+
+            self._write_index(index)
+            return True
+        except Exception as e:
+            print(f"Ошибка при удалении модели {device}/{model_name}: {e}")
+            return False

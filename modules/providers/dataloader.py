@@ -1,4 +1,4 @@
-from typing import Tuple, List, Generator
+from typing import Tuple, List, Generator, Optional, Set
 from itertools import islice, cycle
 
 import torch
@@ -6,7 +6,7 @@ from torch.utils.data import IterableDataset, get_worker_info
 import numpy as np
 import pandas as pd
 
-from SP_model import TIMES
+TIMES = np.arange(0, 11, 1)
 
 torch.manual_seed(42)
 np.random.seed(42)
@@ -21,7 +21,9 @@ class DiskDataset(IterableDataset):
                  to_cens_time_list: List[int] = [],
                  to_term_time_list: List[int] = [],
                  cens_prob: float = -1,
-                 max_buffer_size: int = 5000):
+                 max_buffer_size: int = 5000,
+                 ids: Optional[List[str]] = None,
+                 id_col: str = 'serial_number'):
         """DiskDataset constructor.
 
         Args:
@@ -38,15 +40,21 @@ class DiskDataset(IterableDataset):
         self.times = times
         self.to_cens_time_list = to_cens_time_list
         self.to_term_time_list = to_term_time_list
+        self.ids_set: Optional[Set[str]] = set(ids) if ids is not None else None
+        self.id_col = id_col
 
         # Buffers for censored and terminal observations
         self.cens_prob = cens_prob
         self.cens_buf = []
         self.term_buf = []
+        self.max_buffer_size = max_buffer_size
 
         self._len = 0
         for file_path in self._file_paths:
             df = pd.read_csv(file_path)
+            if self.ids_set is not None and self.id_col in df.columns:
+                df = df[df[self.id_col].isin(self.ids_set)]
+                df = df.reset_index(drop=True)
             term = df['failure'].sum()
             self._len += df.shape[0] + term * (len(self.to_cens_time_list) +
                                                len(self.to_term_time_list)) - len(df[df['time'] == df['max_lifetime']])
@@ -74,13 +82,17 @@ class DiskDataset(IterableDataset):
                 lines = lines[1:]
                 np.random.shuffle(lines)
 
-                id_idx = header.index('serial_number')
+                id_idx = header.index(self.id_col)
                 time_idx = header.index('time')
                 if self._mode != 'infer':
                     label_idx = header.index('failure')
                     event_time_idx = header.index('max_lifetime')
                 for line in lines:
                     data_line = line.strip().split(',')
+                    # If ids filter provided, skip lines with ids not in the set
+                    if self.ids_set is not None:
+                        if data_line[id_idx] not in self.ids_set:
+                            continue
                     if self._mode == 'train':
                         if data_line[event_time_idx] == data_line[time_idx]:
                             continue

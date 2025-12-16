@@ -7,6 +7,7 @@ from modules.collectors import DICT_COLLECTORS
 from modules.model_storage import ModelStorage, DICT_MODEL_STORAGES
 from typing import Optional
 from modules.base.feature_metadata import FeatureType
+from modules.registry import ModelRegistry
 
 import numpy as np
 import torch
@@ -23,7 +24,16 @@ class SystemManager:
         self._last_dataset_df = None
 
         self.global_model_storage = ModelStorage()
+        self.model_registry = ModelRegistry()
         self.setup_config(app)
+
+    def get_model_parameters(self, model_type: str):
+        return self.model_registry.get_model_parameters(model_type)
+
+    def fit_model(self, model_type: str, data: str, device_name: str, params: dict = None):
+        id_col = self.get_id_col(device_name)
+        data = self.get_dataloader(data, device=device_name, batch_size=256, id_col=id_col)
+        return self.model_registry.fit_model(model_name=model_type, dataloader=data, params=params, id_col=id_col)
 
     def setup_collectors(self):
         self.collectors = {}
@@ -126,31 +136,41 @@ class SystemManager:
         data = collector.collect(objects=objects)
         return data
 
-    # --- Работа с моделями ---
-    def apply_model(self, model_name: str, data: pd.DataFrame, id_col: Optional[str] = None):
-        if data is None:
-            raise ValueError("Нет данных для применения модели")
-        model = self.global_model_storage.load(model_name)
+    def apply_model(self, model_name: str, data, id_col: Optional[str] = None, device_name: Optional[str] = None, ids: Optional[list] = None):
 
-        preds = model.predict(data, id_col=id_col)
+        model = self.load_model(device_name, model_name)
+        dataset_name = data
+        dataloader = self.get_dataloader(dataset_name, device=device_name, batch_size=256,
+                                         ids=ids, id_col=id_col, mode='score')
+        times = np.arange(1, 10)
+        result = model.predict(dataloader, times, id_col=id_col)
 
-        preds = pd.DataFrame(preds)
+        if device_name == 'general' or not device_name:
+            self.predictions[model_name] = result
 
-        self.predictions[model_name] = preds
-        return preds
+        return result
 
-    def save_model(self, model_name: str, model) -> str:
-        return self.global_model_storage.save(model_name, model)
+    def save_model(self, model: str, device, model_name) -> str:
+        return self.global_model_storage.save_model(model, device, model_name)
 
     def load_model(self, device_name: str, model_name: str):
+        if model_name.endswith('DummyRandModel'):
+            return self.global_model_storage.load(model_name)
+        models_index = self.get_models()
+
+        if device_name in models_index and model_name in models_index[device_name]:
+            model_info = models_index[device_name][model_name]
+            model_path = model_info['path']
+            return self.global_model_storage.load(model_path)
+
         if device_name and device_name != 'general' and '/' not in model_name:
             path = f"{device_name}/{model_name}"
         else:
             path = model_name
         return self.global_model_storage.load(path)
 
-    def list_models(self) -> list:
-        return self.global_model_storage.list_models()
+    def list_models_to_fit(self) -> list:
+        return self.model_registry.list_models()
 
     def get_models(self) -> dict:
         return self.global_model_storage.list_models()
@@ -237,6 +257,15 @@ class SystemManager:
         self._last_dataset_key = key
         self._last_dataset_df = df
         return df
+
+    def get_dataloader(self, name: str, device: str = None, batch_size: int = 32,
+                       start_time: float = None, end_time: float = None,
+                       ids: Optional[list] = None, id_col: Optional[str] = None,
+                       mode: str = 'train') -> Optional[DataLoader]:
+        """Получить DataLoader для указанного датасета"""
+        return self.fs_provider.get_dataloader(name, device=device, batch_size=batch_size,
+                                               start_time=start_time, end_time=end_time,
+                                               ids=ids, id_col=id_col, mode=mode)
 
     def list_devices(self):
         return list(self.collectors.keys())

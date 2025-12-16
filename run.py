@@ -74,6 +74,13 @@ def predict():
     return render_template('predict.html')
 
 
+@app.route('/models', methods=['GET'])
+def models():
+    """Страница создания и обучения ML-моделей"""
+    collectors = list(manager.collectors.keys())
+    return render_template('models.html', collectors=collectors)
+
+
 @app.route('/api/devices', methods=['GET'])
 def api_devices():
     devices = manager.list_devices()
@@ -121,23 +128,14 @@ def api_ids():
 
 def _build_curves_from_preds(preds, id_col='id'):
     curves = {}
-
-    cols = list(preds.columns.drop([id_col], errors='ignore'))
-    if 'time' in cols:
-        cols.remove('time')
-
-    times = []
-    time_cols = []
-    for c in cols:
-        times.append(float(c))
-        time_cols.append(c)
-
-
+    if id_col not in preds.columns:
+        raise ValueError(f"ID column '{id_col}' not found in predictions")
+    time_cols = [c for c in preds.columns if c != id_col and c != 'time']
     preds_grouped = preds.groupby(id_col).mean()
 
-    for idx, row in preds_grouped.iterrows():
+    for idx, row in preds_grouped.iterrows() if id_col is not None else [(0, preds_grouped)]:
         survival_vals = [float(row[c]) for c in time_cols]
-        curves[str(idx)] = {'time': times, 'survival': survival_vals}
+        curves[str(idx)] = {'time': time_cols, 'survival': survival_vals}
 
     return curves
 
@@ -167,9 +165,9 @@ def api_predict():
     if ids and 'all' not in ids and id_col:
         data = data[data[id_col].astype(str).isin([str(x) for x in ids])]
     if 'general' == model_device:
-        preds = manager.apply_model(model_name, data, id_col=id_col)
+        preds = manager.apply_model(model_name, dataset, device_name=model_device, id_col=id_col)
     else:
-        preds = manager.predict_survival(model_device, model_name, data)
+        preds = manager.apply_model(model_name, dataset, id_col=id_col, ids=ids, device_name=model_device)
     print(id_col)
     curves = _build_curves_from_preds(preds, id_col=id_col)
 
@@ -316,6 +314,59 @@ def stop_schedule():
     if manager.scheduler is not None:
         manager.apply_schedule(manager.get_schedule())
     return redirect(url_for('main'))
+
+
+@app.route('/api/train_model', methods=['POST'])
+def api_train_model():
+    """API для обучения новых моделей"""
+    try:
+        payload = request.get_json() or {}
+        model_type = payload.get('model_type')
+        model_name = payload.get('model_name')
+        device = payload.get('device')
+        dataset = payload.get('dataset')
+        parameters = payload.get('parameters', {})
+
+        if not all([model_type, model_name, device, dataset]):
+            return jsonify({'error': 'Не все обязательные параметры указаны'}), 400
+
+        model = manager.fit_model(model_type=model_type, data=dataset, params=parameters, device_name=device)
+
+        if model is None:
+            return jsonify({'error': 'Не удалось обучить модель. Проверьте параметры и данные.'}), 400
+
+        manager.save_model(model, device, model_name)
+
+        return jsonify({
+            'success': True,
+            'message': f'Модель {model_name} успешно обучена и сохранена',
+            'model_name': model_name,
+            'model_type': model_type,
+            'device': device
+        })
+    except Exception as e:
+        return jsonify({'error': f'Ошибка при обучении модели: {str(e)}'}), 500
+
+
+@app.route('/api/available_models', methods=['GET'])
+def api_available_models():
+    """API для получения списка доступных типов моделей"""
+    try:
+        models = manager.list_models_to_fit()
+        print(models)
+        return jsonify(models)
+    except Exception as e:
+        return jsonify({'error': f'Ошибка получения списка моделей: {str(e)}'}), 500
+
+
+@app.route('/api/model_parameters/<model_type>', methods=['GET'])
+def api_model_parameters(model_type):
+    """API для получения параметров конкретного типа модели"""
+    try:
+        parameters = manager.get_model_parameters(model_type)
+        return jsonify(parameters)
+    except Exception as e:
+        return jsonify({'error': f'Ошибка получения параметров модели: {str(e)}'}), 500
 
 
 if __name__ == '__main__':

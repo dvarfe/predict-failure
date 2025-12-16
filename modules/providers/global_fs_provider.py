@@ -1,9 +1,10 @@
 import os
 from typing import Optional, Dict, List
 import pandas as pd
+from torch.utils.data import DataLoader
 
 from ..base.data_provider import AbstractDataProvider
-
+from .dataloader import DiskDataset
 
 class GlobalFileSystemProvider(AbstractDataProvider):
 
@@ -63,6 +64,31 @@ class GlobalFileSystemProvider(AbstractDataProvider):
                 df = df[df['timestamp'] <= float(end_time)]
             df = df.reset_index(drop=True)
         return df
+
+    def get_dataloader(self, name: str, device: Optional[str] = None, batch_size: int = 32,
+                       start_time: Optional[float] = None, end_time: Optional[float] = None,
+                       ids: Optional[list] = None, id_col: Optional[str] = None,
+                       mode: str = 'train') -> Optional[DataLoader]:
+        """Получить DataLoader для указанного датасета"""
+
+
+        if device:
+            file_path = self._dataset_path(device, name)
+        else:
+            file_path = name
+
+        if not os.path.exists(file_path):
+            return None
+
+        dataset = DiskDataset(
+            mode=mode,
+            file_paths=[file_path],
+            shuffle_files=False,
+            ids=ids,
+            id_col=id_col
+        )
+
+        return DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     def remove(self, name: str, device: Optional[str] = None):
         if device is not None:

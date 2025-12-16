@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Создание и обучение ML-моделей</h1>
+
+    <div class="row">
+        <!-- Панель создания новой модели -->
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-plus-circle"></i> Создать новую модель
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="create-model-form">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="model-name" class="form-label">Название модели</label>
+                                <input type="text" class="form-control" id="model-name" name="model_name"
+                                    placeholder="Введите название модели" required>
+                                <div class="form-text">Уникальное имя для вашей модели</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="model-type" class="form-label">Тип модели</label>
+                                <select class="form-select" id="model-type" name="model_type" required>
+                                    <option value="">Выберите тип модели</option>
+                                    <!-- Опции будут загружены через JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="device-select" class="form-label">Устройство</label>
+                                <select class="form-select" id="device-select" name="device" required>
+                                    <option value="">Выберите устройство</option>
+                                    {% for collector in collectors %}
+                                    <option value="{{ collector }}">{{ collector }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="dataset-select" class="form-label">Набор данных</label>
+                                <select class="form-select" id="dataset-select" name="dataset" required disabled>
+                                    <option value="">Сначала выберите устройство</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Параметры модели (появляются динамически) -->
+                        <div id="model-parameters" class="mb-3" style="display: none;">
+                            <label class="form-label">Параметры модели</label>
+                            <div id="parameters-container">
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" id="train-button">
+                                <span class="spinner-border spinner-border-sm d-none" role="status"
+                                    aria-hidden="true"></span>
+                                <span id="button-text">Обучить модель</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты обучения -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div id="training-results" class="card d-none">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line"></i> Результаты обучения
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="results-content">
+                        <!-- Результаты будут отображены здесь -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Use CDN CSS for Font Awesome to avoid CORS issues with kit scripts -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deviceSelect = document.getElementById('device-select');
+        const datasetSelect = document.getElementById('dataset-select');
+        const modelTypeSelect = document.getElementById('model-type');
+        const parametersDiv = document.getElementById('model-parameters');
+        const parametersContainer = document.getElementById('parameters-container');
+        const createModelForm = document.getElementById('create-model-form');
+        const trainButton = document.getElementById('train-button');
+        const buttonText = document.getElementById('button-text');
+        const spinner = trainButton.querySelector('.spinner-border');
+        const trainingResults = document.getElementById('training-results');
+        const resultsContent = document.getElementById('results-content');
+
+        loadAvailableModels();
+
+        deviceSelect.addEventListener('change', function () {
+            const device = this.value;
+            datasetSelect.innerHTML = '<option value="">Загрузка...</option>';
+            datasetSelect.disabled = true;
+
+            if (device) {
+                fetch(`/api/datasets?device=${encodeURIComponent(device)}`)
+                    .then(response => response.json())
+                    .then(datasets => {
+                        datasetSelect.innerHTML = '<option value="">Выберите набор данных</option>';
+                        datasets.forEach(dataset => {
+                            const option = document.createElement('option');
+                            option.value = dataset;
+                            option.textContent = dataset;
+                            datasetSelect.appendChild(option);
+                        });
+                        datasetSelect.disabled = false;
+                    })
+                    .catch(error => {
+                        console.error('Ошибка загрузки наборов данных:', error);
+                        datasetSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+                    });
+            } else {
+                datasetSelect.innerHTML = '<option value="">Сначала выберите устройство</option>';
+            }
+        });
+
+        function loadAvailableModels() {
+            fetch('/api/available_models')
+                .then(response => response.json())
+                .then(models => {
+                    modelTypeSelect.innerHTML = '<option value="">Выберите тип модели</option>';
+                    if (Array.isArray(models)) {
+                        models.forEach(modelKey => {
+                            const option = document.createElement('option');
+                            option.value = modelKey;
+                            option.textContent = modelKey;
+                            modelTypeSelect.appendChild(option);
+                        });
+                    } else {
+                        modelTypeSelect.innerHTML = '<option value="">Нет доступных моделей</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки моделей:', error);
+                    modelTypeSelect.innerHTML = '<option value="">Ошибка загрузки моделей</option>';
+                });
+        }
+
+        modelTypeSelect.addEventListener('change', function () {
+            const modelType = this.value;
+            parametersContainer.innerHTML = '';
+
+            if (modelType) {
+                fetch(`/api/model_parameters/${encodeURIComponent(modelType)}`)
+                    .then(response => response.json())
+                    .then(parameters => {
+                        if (Object.keys(parameters).length > 0) {
+                            parametersDiv.style.display = 'block';
+                            let html = '<div class="row">';
+
+                            for (const [paramName, paramInfo] of Object.entries(parameters)) {
+                                const colClass = Object.keys(parameters).length > 2 ? 'col-md-4' : 'col-md-6';
+                                html += `<div class="${colClass} mb-3">`;
+                                html += `<label class="form-label">${paramInfo.description || paramName}</label>`;
+
+                                if (paramInfo.type === 'int') {
+                                    html += `<input type="number" class="form-control" name="${paramName}" 
+                                        value="${paramInfo.default || ''}" 
+                                        min="${paramInfo.min || ''}" 
+                                        max="${paramInfo.max || ''}" 
+                                        step="${paramInfo.step || 1}">`;
+                                } else if (paramInfo.type === 'float') {
+                                    html += `<input type="number" class="form-control" name="${paramName}" 
+                                        value="${paramInfo.default || ''}" 
+                                        min="${paramInfo.min || ''}" 
+                                        max="${paramInfo.max || ''}" 
+                                        step="${paramInfo.step || 0.001}">`;
+                                } else if (paramInfo.type === 'bool') {
+                                    const checked = paramInfo.default ? 'checked' : '';
+                                    html += `<div class="form-check">
+                                        <input type="checkbox" class="form-check-input" name="${paramName}" ${checked}>
+                                        <label class="form-check-label">${paramInfo.description || paramName}</label>
+                                        </div>`;
+                                } else {
+                                    html += `<input type="text" class="form-control" name="${paramName}" 
+                                        value="${paramInfo.default || ''}" 
+                                        placeholder="${paramInfo.description || ''}">`;
+                                }
+
+                                html += '</div>';
+                            }
+
+                            html += '</div>';
+                            parametersContainer.innerHTML = html;
+                        } else {
+                            parametersDiv.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка загрузки параметров модели:', error);
+                        parametersDiv.style.display = 'none';
+                    });
+            } else {
+                parametersDiv.style.display = 'none';
+            }
+        });
+
+        createModelForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const data = {
+                model_name: formData.get('model_name'),
+                model_type: formData.get('model_type'),
+                device: formData.get('device'),
+                dataset: formData.get('dataset'),
+                parameters: {}
+            };
+
+            const paramInputs = parametersContainer.querySelectorAll('input');
+            paramInputs.forEach(input => {
+                if (input.name) {
+                    if (input.type === 'checkbox') {
+                        data.parameters[input.name] = input.checked;
+                    } else if (input.type === 'number') {
+                        const value = parseFloat(input.value);
+                        data.parameters[input.name] = isNaN(value) ? null : value;
+                    } else {
+                        data.parameters[input.name] = input.value || null;
+                    }
+                }
+            });
+
+            trainButton.disabled = true;
+            spinner.classList.remove('d-none');
+            buttonText.textContent = 'Обучение...';
+            trainingResults.classList.add('d-none');
+
+            submitTrainRequest(data);
+
+            function submitTrainRequest(payload) {
+                fetch('/api/train_model', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                    .then(response => response.json())
+                    .then(result => {
+                        trainButton.disabled = false;
+                        spinner.classList.add('d-none');
+                        buttonText.textContent = 'Обучить модель';
+
+                        if (result.success) {
+                            resultsContent.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle"></i> Успешно!</h6>
+                            <p class="mb-1">${result.message}</p>
+                            <small class="text-muted">Модель: ${result.model_name} (${result.model_type})</small>
+                        </div>
+                    `;
+                            trainingResults.classList.remove('d-none');
+
+                            createModelForm.reset();
+                            parametersDiv.style.display = 'none';
+                            datasetSelect.innerHTML = '<option value="">Сначала выберите устройство</option>';
+                            datasetSelect.disabled = true;
+                        } else {
+                            resultsContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Ошибка</h6>
+                            <p class="mb-0">${result.error}</p>
+                        </div>
+                    `;
+                            trainingResults.classList.remove('d-none');
+                        }
+                    })
+                    .catch(error => {
+                        trainButton.disabled = false;
+                        spinner.classList.add('d-none');
+                        buttonText.textContent = 'Обучить модель';
+
+                        console.error('Ошибка:', error);
+                        resultsContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Ошибка сети</h6>
+                        <p class="mb-0">Не удалось отправить запрос на сервер</p>
+                    </div>
+                `;
+                        trainingResults.classList.remove('d-none');
+                    });
+            }
+        });
+    });
+</script>
+
+{% endblock %}
