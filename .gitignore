@@ -1,7 +1,5 @@
 *DS_Store*
 *cpython*
-storage/configs
-storage/data
-storage/models
+storage
 train_sp.py
 train_cox.py
