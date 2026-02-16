@@ -213,7 +213,9 @@ def feature_monitor():
         features = []
         for col in df.columns:
             if col in metadata and metadata[col].type == FeatureType.NUMERICAL:
-                features.append(col)
+                # Добавляем только признаки, у которых есть хотя бы одно непустое значение
+                if not df[col].isna().all():
+                    features.append(col)
 
         feature_metadata = {name: meta.to_dict() for name, meta in metadata.items()}
 
@@ -234,7 +236,7 @@ def feature_monitor():
 
         if device_id_column and device_id_column in df.columns:
             # Получаем объединение всех временных меток
-            all_timestamps = sorted(df["timestamp"].unique())
+            all_timestamps = sorted(df['time'].unique())
 
             chart_data = []
             for device_id in df[device_id_column].unique():
@@ -250,7 +252,7 @@ def feature_monitor():
 
                 device_timestamps_values = {}
                 for _, row in device_df.iterrows():
-                    device_timestamps_values[row["timestamp"]] = row[selected_feature]
+                    device_timestamps_values[row['time']] = row[selected_feature]
 
                 values = [device_timestamps_values.get(ts, None) for ts in all_timestamps]
 
