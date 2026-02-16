@@ -1,17 +1,20 @@
+import os
+
+import numpy as np
+import torch
+from torch.utils.data import Dataset, DataLoader
+
 import pandas as pd
 from core.config import ConfigManager
 from modules.providers import DICT_DATA_PROVIDERS, DEFAULT_PROVIDER_PARAMS
 from modules.providers.global_fs_provider import GlobalFileSystemProvider  # TODO: Избавиться от захардкоженного провайдера
 from modules.schedulers import DICT_SCHEDULERS, DEFAULT_SCHEDULER_PARAMS
 from modules.collectors import DICT_COLLECTORS
-from modules.model_storage import ModelStorage, DICT_MODEL_STORAGES
+from modules.model_storage import ModelStorage
 from typing import Optional
 from modules.base.feature_metadata import FeatureType
+from modules.base.preprocessor_manager import PreprocessorManager
 from modules.registry import ModelRegistry
-
-import numpy as np
-import torch
-from torch.utils.data import Dataset, DataLoader
 
 
 class SystemManager:
@@ -25,6 +28,7 @@ class SystemManager:
 
         self.global_model_storage = ModelStorage()
         self.model_registry = ModelRegistry()
+        self.preprocessor_manager = PreprocessorManager()
         self.setup_config(app)
 
     def get_model_parameters(self, model_type: str):
@@ -140,18 +144,36 @@ class SystemManager:
 
         model = self.load_model(device_name, model_name)
         dataset_name = data
-        dataloader = self.get_dataloader(dataset_name, device=device_name, batch_size=256,
-                                         ids=ids, id_col=id_col, mode='score')
-        times = np.arange(1, 10)
-        result = model.predict(dataloader, times, id_col=id_col)
+
+        # Загружаем данные и применяем препроцессинг
+        df = self.load_dataframe(dataset_name, device=device_name)
+        processed_df = self.apply_preprocessing(df, device_name, model_name)
+
+        # Сохраняем предобработанные данные во временную папку как CSV для fs_provider
+        tmp_dir = os.path.join("storage", "data", device_name or "tmp")
+        os.makedirs(tmp_dir, exist_ok=True)
+
+        processed_dataset_name = f"{dataset_name}_preprocessed_{model_name}"
+        tmp_file_path = os.path.join(tmp_dir, f"{processed_dataset_name}.csv")
+        processed_df.to_csv(tmp_file_path, index=False)
+
+        try:
+            dataloader = self.get_dataloader(processed_dataset_name, device=device_name, batch_size=256,
+                                             ids=ids, id_col=id_col, mode='infer')
+            times = np.arange(1, 10)
+            result = model.predict(dataloader, times, id_col=id_col)
+        finally:
+            # Удаляем временный файл
+            if os.path.exists(tmp_file_path):
+                os.remove(tmp_file_path)
 
         if device_name == 'general' or not device_name:
             self.predictions[model_name] = result
 
         return result
 
-    def save_model(self, model: str, device, model_name) -> str:
-        return self.global_model_storage.save_model(model, device, model_name)
+    def save_model(self, model: str, device, model_name, preprocessor_name: str = None) -> str:
+        return self.global_model_storage.save_model(model, device, model_name, preprocessor_name)
 
     def load_model(self, device_name: str, model_name: str):
         if model_name.endswith('DummyRandModel'):
@@ -191,10 +213,24 @@ class SystemManager:
         self._id_col_cache[collector_name] = None
         return None
 
+    def get_model_preprocessor_name(self, device_name: str, model_name: str) -> str:
+        """Получить имя препроцессора для модели"""
+        return self.global_model_storage.get_model_preprocessor_name(device_name, model_name)
+
+    def apply_preprocessing(self, data: pd.DataFrame, device_name: str, model_name: str) -> pd.DataFrame:
+        """Применить препроцессинг к данным для конкретной модели"""
+        preprocessor_name = self.get_model_preprocessor_name(device_name, model_name)
+        if preprocessor_name:
+            return self.preprocessor_manager.apply_preprocessing(data, preprocessor_name)
+        return data
+
     def predict_survival(self, device_name: str, model_name: str, data: pd.DataFrame) -> pd.Series:
         model = self.load_model(device_name, model_name)
         id_col = self.get_id_col(device_name)
         df = data.copy()
+
+        # Применяем препроцессинг
+        df = self.apply_preprocessing(df, device_name, model_name)
 
         time_col = 'time' if 'time' in df.columns else 'timestamp' if 'timestamp' in df.columns else None
 

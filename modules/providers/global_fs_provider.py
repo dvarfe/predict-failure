@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from ..base.data_provider import AbstractDataProvider
 from .dataloader import DiskDataset
 
+
 class GlobalFileSystemProvider(AbstractDataProvider):
 
     def __init__(self, provider_type: str = 'global_fs', base_dir: str = 'storage/data'):
@@ -71,7 +72,6 @@ class GlobalFileSystemProvider(AbstractDataProvider):
                        mode: str = 'train') -> Optional[DataLoader]:
         """Получить DataLoader для указанного датасета"""
 
-
         if device:
             file_path = self._dataset_path(device, name)
         else:
@@ -85,7 +85,7 @@ class GlobalFileSystemProvider(AbstractDataProvider):
             file_paths=[file_path],
             shuffle_files=False,
             ids=ids,
-            id_col=id_col
+            id_col=id_col,
         )
 
         return DataLoader(dataset, batch_size=batch_size, shuffle=False)

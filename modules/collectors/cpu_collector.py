@@ -21,7 +21,7 @@ class AbstractCPUDataCollector(AbstractDataCollector):
     def get_feature_metadata(cls) -> Dict[str, FeatureMetadata]:
         """Метаданные всех признаков CPU"""
         return {
-            "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
+            "time": FeatureMetadata("time", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
             "cpu_id": FeatureMetadata("cpu_id", FeatureType.IDENTIFIER, "", "Идентификатор процессора"),
             "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель процессора"),
             "cpu_usage_percent": FeatureMetadata("cpu_usage_percent", FeatureType.NUMERICAL, "%", "Загрузка процессора"),
@@ -65,7 +65,7 @@ class AbstractCPUDataCollector(AbstractDataCollector):
         context_switches = self._get_context_switches()
 
         data = {
-            "timestamp": [timestamp],
+            "time": [timestamp],
             "cpu_id": ["system_cpu"],
             "device_name": [cpu_info.get('model', 'Unknown CPU')],
             "cpu_usage_percent": [usage],

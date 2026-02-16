@@ -23,66 +23,44 @@ class AbstractDriveDataCollector(AbstractDataCollector):
     @classmethod
     def get_feature_metadata(cls) -> Dict[str, FeatureMetadata]:
         """Метаданные всех признаков дисков"""
-        return {
-            "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
+        metadata = {
+            "time": FeatureMetadata("time", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
             "device": FeatureMetadata("device", FeatureType.CATEGORICAL, "", "Устройство диска"),
             "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель диска"),
             "serial_number": FeatureMetadata("serial_number", FeatureType.IDENTIFIER, "", "Серийный номер диска"),
             "model_name": FeatureMetadata("model_name", FeatureType.CATEGORICAL, "", "Модель диска"),
             "firmware_version": FeatureMetadata("firmware_version", FeatureType.CATEGORICAL, "", "Версия прошивки"),
             "capacity_bytes": FeatureMetadata("capacity_bytes", FeatureType.NUMERICAL, "bytes", "Объем диска"),
-
-            # SMART статус
-            "smart_status": FeatureMetadata("smart_status", FeatureType.CATEGORICAL, "", "Общий SMART статус"),
-
-            # Общие атрибуты
-            "temperature": FeatureMetadata("temperature", FeatureType.NUMERICAL, "°C", "Температура диска"),
-            "power_on_hours": FeatureMetadata("power_on_hours", FeatureType.NUMERICAL, "hours", "Часы работы"),
-            "power_cycles": FeatureMetadata("power_cycles", FeatureType.NUMERICAL, "count", "Циклы питания"),
-
-            # NVMe специфичные атрибуты
-            "nvme_percentage_used": FeatureMetadata("nvme_percentage_used", FeatureType.NUMERICAL, "%", "Процент использования NVMe"),
-            "nvme_data_units_written": FeatureMetadata("nvme_data_units_written", FeatureType.NUMERICAL, "units", "Записанных блоков NVMe"),
-            "nvme_data_units_read": FeatureMetadata("nvme_data_units_read", FeatureType.NUMERICAL, "units", "Прочитанных блоков NVMe"),
-            "nvme_integrity_errors": FeatureMetadata("nvme_integrity_errors", FeatureType.NUMERICAL, "count", "Ошибки целостности NVMe"),
-            "nvme_unsafe_shutdowns": FeatureMetadata("nvme_unsafe_shutdowns", FeatureType.NUMERICAL, "count", "Небезопасные выключения NVMe"),
-            "nvme_available_spare": FeatureMetadata("nvme_available_spare", FeatureType.NUMERICAL, "%", "Доступный резерв NVMe"),
-            "nvme_critical_warning": FeatureMetadata("nvme_critical_warning", FeatureType.NUMERICAL, "flags", "Критические предупреждения NVMe"),
-
-            # ATA специфичные атрибуты
-            "ata_temperature_celsius_raw": FeatureMetadata("ata_temperature_celsius_raw", FeatureType.NUMERICAL, "", "ATA температура (сырое значение)"),
-            "ata_temperature_celsius_value": FeatureMetadata("ata_temperature_celsius_value", FeatureType.NUMERICAL, "°C", "ATA температура"),
-            "ata_power_on_hours_raw": FeatureMetadata("ata_power_on_hours_raw", FeatureType.NUMERICAL, "", "ATA часы работы (сырое значение)"),
-            "ata_power_on_hours_value": FeatureMetadata("ata_power_on_hours_value", FeatureType.NUMERICAL, "hours", "ATA часы работы"),
-            "ata_power_cycle_count_raw": FeatureMetadata("ata_power_cycle_count_raw", FeatureType.NUMERICAL, "", "ATA циклы питания (сырое значение)"),
-            "ata_power_cycle_count_value": FeatureMetadata("ata_power_cycle_count_value", FeatureType.NUMERICAL, "count", "ATA циклы питания"),
-
-            # Ошибки и производительность
-            "read_error_rate": FeatureMetadata("read_error_rate", FeatureType.NUMERICAL, "rate", "Частота ошибок чтения"),
-            "seek_error_rate": FeatureMetadata("seek_error_rate", FeatureType.NUMERICAL, "rate", "Частота ошибок позиционирования"),
-            "spin_up_time": FeatureMetadata("spin_up_time", FeatureType.NUMERICAL, "ms", "Время раскрутки"),
-            "start_stop_count": FeatureMetadata("start_stop_count", FeatureType.NUMERICAL, "count", "Циклы старт-стоп"),
-
-            # Для SSD
-            "wear_leveling_count": FeatureMetadata("wear_leveling_count", FeatureType.NUMERICAL, "count", "Износ выравнивания"),
-            "program_fail_count": FeatureMetadata("program_fail_count", FeatureType.NUMERICAL, "count", "Ошибки программирования"),
-            "erase_fail_count": FeatureMetadata("erase_fail_count", FeatureType.NUMERICAL, "count", "Ошибки стирания"),
-            "ssd_life_left": FeatureMetadata("ssd_life_left", FeatureType.NUMERICAL, "%", "Остаток жизни SSD"),
-
-            # Дополнительные метрики
-            "throughput_performance": FeatureMetadata("throughput_performance", FeatureType.NUMERICAL, "rate", "Производительность"),
-            "seek_time_performance": FeatureMetadata("seek_time_performance", FeatureType.NUMERICAL, "rate", "Производительность позиционирования"),
-            "spin_retry_count": FeatureMetadata("spin_retry_count", FeatureType.NUMERICAL, "count", "Повторы раскрутки"),
-            "calibration_retry_count": FeatureMetadata("calibration_retry_count", FeatureType.NUMERICAL, "count", "Повторы калибровки"),
-
-            # Статистика использования
-            "total_lbas_written": FeatureMetadata("total_lbas_written", FeatureType.NUMERICAL, "count", "Всего записано LBA"),
-            "total_lbas_read": FeatureMetadata("total_lbas_read", FeatureType.NUMERICAL, "count", "Всего прочитано LBA"),
-
-            # Дополнительная информация
             "drive_type": FeatureMetadata("drive_type", FeatureType.CATEGORICAL, "", "Тип диска"),
             "interface": FeatureMetadata("interface", FeatureType.CATEGORICAL, "", "Интерфейс диска"),
+            "smart_status": FeatureMetadata("smart_status", FeatureType.CATEGORICAL, "", "Общий SMART статус"),
+
+            # NVMe специфичные атрибуты
+            "nvme_critical_warning": FeatureMetadata("nvme_critical_warning", FeatureType.NUMERICAL, "flags", "Критические предупреждения NVMe"),
+            "nvme_temperature": FeatureMetadata("nvme_temperature", FeatureType.NUMERICAL, "°C", "Температура NVMe"),
+            "nvme_available_spare": FeatureMetadata("nvme_available_spare", FeatureType.NUMERICAL, "%", "Доступный резерв NVMe"),
+            "nvme_percentage_used": FeatureMetadata("nvme_percentage_used", FeatureType.NUMERICAL, "%", "Процент использования NVMe"),
+            "nvme_data_units_read": FeatureMetadata("nvme_data_units_read", FeatureType.NUMERICAL, "units", "Прочитанных блоков NVMe"),
+            "nvme_data_units_written": FeatureMetadata("nvme_data_units_written", FeatureType.NUMERICAL, "units", "Записанных блоков NVMe"),
+            "nvme_host_read_commands": FeatureMetadata("nvme_host_read_commands", FeatureType.NUMERICAL, "count", "Команд чтения от хоста NVMe"),
+            "nvme_host_write_commands": FeatureMetadata("nvme_host_write_commands", FeatureType.NUMERICAL, "count", "Команд записи от хоста NVMe"),
+            "nvme_controller_busy_time": FeatureMetadata("nvme_controller_busy_time", FeatureType.NUMERICAL, "minutes", "Время занятости контроллера NVMe"),
+            "nvme_power_cycles": FeatureMetadata("nvme_power_cycles", FeatureType.NUMERICAL, "count", "Циклы питания NVMe"),
+            "nvme_power_on_hours": FeatureMetadata("nvme_power_on_hours", FeatureType.NUMERICAL, "hours", "Часы работы NVMe"),
+            "nvme_unsafe_shutdowns": FeatureMetadata("nvme_unsafe_shutdowns", FeatureType.NUMERICAL, "count", "Небезопасные выключения NVMe"),
+            "nvme_integrity_errors": FeatureMetadata("nvme_integrity_errors", FeatureType.NUMERICAL, "count", "Ошибки целостности NVMe"),
         }
+
+        # Добавляем универсальные SMART атрибуты (до 256 возможных атрибутов)
+        for i in range(256):
+            metadata[f"smart_{i}_raw"] = FeatureMetadata(
+                f"smart_{i}_raw",
+                FeatureType.NUMERICAL,
+                "",
+                f"SMART атрибут {i} (сырое значение)"
+            )
+
+        return metadata
 
     def find_objects(self) -> List[str]:
         """Найти доступные диски для мониторинга"""
@@ -130,7 +108,7 @@ class AbstractDriveDataCollector(AbstractDataCollector):
 
         # Базовые данные диска
         data = {
-            "timestamp": timestamp,
+            "time": timestamp,
             "device": device_name,
             "device_name": drive.get('model_name', f"Drive {device_name}"),
             "serial_number": drive.get('serial_number'),
@@ -153,14 +131,27 @@ class AbstractDriveDataCollector(AbstractDataCollector):
 
     def _get_empty_smart_attributes(self) -> Dict[str, Any]:
         """Возвращает словарь с пустыми SMART атрибутами"""
-        return {
-            "smart_status": None,
-        }
+        attributes = {"smart_status": None}
+        # Добавляем пустые значения для всех возможных SMART атрибутов
+        for i in range(256):
+            attributes[f"smart_{i}_raw"] = None
+
+        # Добавляем пустые NVMe атрибуты
+        nvme_attrs = [
+            "nvme_critical_warning", "nvme_temperature", "nvme_available_spare",
+            "nvme_percentage_used", "nvme_data_units_read", "nvme_data_units_written",
+            "nvme_host_read_commands", "nvme_host_write_commands", "nvme_controller_busy_time",
+            "nvme_power_cycles", "nvme_power_on_hours", "nvme_unsafe_shutdowns", "nvme_integrity_errors"
+        ]
+        for attr in nvme_attrs:
+            attributes[attr] = None
+
+        return attributes
 
     def _get_empty_drive_data(self, timestamp: float) -> Dict[str, Any]:
         """Возвращает пустую строку данных когда дисков нет"""
         empty_data = {
-            "timestamp": timestamp,
+            "time": timestamp,
             "device": None,
             "serial_number": None,
             "model_name": None,
@@ -278,7 +269,7 @@ class DriveCollectorLinux(AbstractDriveDataCollector):
 
         # Базовые данные диска
         data = {
-            "timestamp": timestamp,
+            "time": timestamp,
             "device": device_name,
             "serial_number": drive.get('serial_number'),
             "model_name": drive.get('model_name'),
@@ -304,17 +295,14 @@ class DriveCollectorLinux(AbstractDriveDataCollector):
 
         smart_data['smart_status'] = device.assessment or 'Unknown'
 
-        attributes = self._get_empty_smart_attributes()
+        # Инициализируем все SMART атрибуты как None
+        for i in range(256):
+            smart_data[f"smart_{i}_raw"] = None
 
+        # Извлекаем атрибуты в зависимости от типа интерфейса
         if device.if_attributes is not None:
-            self._extract_common_attributes(device.if_attributes, attributes)
+            self._extract_all_attributes(device.if_attributes, smart_data)
 
-            if isinstance(device.if_attributes, AtaAttributes):
-                self._extract_ata_attributes(device.if_attributes, attributes)
-            elif isinstance(device.if_attributes, NvmeAttributes):
-                self._extract_nvme_attributes(device.if_attributes, attributes)
-
-        smart_data.update(attributes)
         return smart_data
 
     def _get_smart_data_from_name(self, device_name: str) -> Dict[str, Any]:
@@ -326,46 +314,39 @@ class DriveCollectorLinux(AbstractDriveDataCollector):
             print(f"Ошибка создания Device для {device_name}: {e}")
             return self._get_empty_smart_attributes()
 
-    def _extract_common_attributes(self, if_attrs, attributes: Dict[str, Any]) -> None:
-        """Извлечение общих атрибутов из любого интерфейса"""
+    def _extract_all_attributes(self, if_attrs, smart_data: Dict[str, Any]) -> None:
+        """Извлечение всех SMART атрибутов в унифицированном формате"""
         if isinstance(if_attrs, AtaAttributes):
-            if not if_attrs.legacyAttributes or all(attr is None for attr in if_attrs.legacyAttributes):
-                return
-            for attr in if_attrs.legacyAttributes:
-                if attr is not None:
-                    attr_name = attr.name.lower().replace('-', '_').replace(' ', '_')
-                    if attr_name == 'temperature_celsius':
-                        attributes['temperature'] = attr.value_int
-                    elif attr_name == 'power_on_hours':
-                        attributes['power_on_hours'] = attr.value_int
-                    elif attr_name == 'power_cycle_count':
-                        attributes['power_cycles'] = attr.value_int
+            # Для ATA дисков извлекаем legacy атрибуты
+            if if_attrs.legacyAttributes and not all(attr is None for attr in if_attrs.legacyAttributes):
+                for idx in range(len(if_attrs.legacyAttributes)):
+                    attr = if_attrs.legacyAttributes[idx]
+                    if attr is not None:
+                        smart_data[f"smart_{idx}_raw"] = float(attr.raw.split()[0])
 
         elif isinstance(if_attrs, NvmeAttributes):
-            attributes['temperature'] = if_attrs.temperature
-            attributes['power_on_hours'] = if_attrs.powerOnHours
-            attributes['power_cycles'] = if_attrs.powerCycles
+            # Для NVMe дисков используем оригинальные названия атрибутов
+            nvme_mapping = {
+                "nvme_critical_warning": if_attrs.criticalWarning,
+                "nvme_temperature": if_attrs.temperature,
+                "nvme_available_spare": if_attrs.availableSpare,
+                "nvme_percentage_used": if_attrs.percentageUsed,
+                "nvme_data_units_read": if_attrs.dataUnitsRead,
+                "nvme_data_units_written": if_attrs.dataUnitsWritten,
+                "nvme_host_read_commands": if_attrs.hostReadCommands,
+                "nvme_host_write_commands": if_attrs.hostWriteCommands,
+                "nvme_controller_busy_time": if_attrs.controllerBusyTime,
+                "nvme_power_cycles": if_attrs.powerCycles,
+                "nvme_power_on_hours": if_attrs.powerOnHours,
+                "nvme_unsafe_shutdowns": if_attrs.unsafeShutdowns,
+                "nvme_integrity_errors": if_attrs.integrityErrors,
+            }
+
+            for attr_name, value in nvme_mapping.items():
+                if value is not None:
+                    smart_data[attr_name] = value
 
         elif isinstance(if_attrs, SCSIAttributes):
-            attributes['temperature'] = if_attrs.temperature
-
-    def _extract_ata_attributes(self, ata_attrs: AtaAttributes, attributes: Dict[str, Any]) -> None:
-        """Извлечение специфичных ATA атрибутов"""
-        if not ata_attrs.legacyAttributes or all(attr is None for attr in ata_attrs.legacyAttributes):
-            return
-
-        for attr in ata_attrs.legacyAttributes:
-            if attr is not None:
-                attr_name = attr.name.lower().replace('-', '_').replace(' ', '_')
-                attributes[f'ata_{attr_name}_raw'] = attr.raw
-                attributes[f'ata_{attr_name}_normalized'] = attr.value_int
-
-    def _extract_nvme_attributes(self, nvme_attrs: NvmeAttributes, attributes: Dict[str, Any]) -> None:
-        """Извлечение специфичных NVMe атрибутов"""
-        attributes['nvme_percentage_used'] = nvme_attrs.percentageUsed
-        attributes['nvme_data_units_written'] = nvme_attrs.dataUnitsWritten
-        attributes['nvme_data_units_read'] = nvme_attrs.dataUnitsRead
-        attributes['nvme_integrity_errors'] = nvme_attrs.integrityErrors
-        attributes['nvme_unsafe_shutdowns'] = nvme_attrs.unsafeShutdowns
-        attributes['nvme_available_spare'] = nvme_attrs.availableSpare
-        attributes['nvme_critical_warning'] = nvme_attrs.criticalWarning
+            # Для SCSI дисков мапим доступные атрибуты
+            if hasattr(if_attrs, 'temperature') and if_attrs.temperature is not None:
+                smart_data["smart_0_raw"] = if_attrs.temperature

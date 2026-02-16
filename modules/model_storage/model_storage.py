@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 
 import onnx
+from joblib import load
 
 from ..base.model_storage_base import AbstractModelStorage
 from ..models.dummy_const_model import DummyConstModel  # TODO: убрать всё, что с этим связано
@@ -99,6 +100,7 @@ class ModelStorage(AbstractModelStorage):
             'type': mtype,
             'ext': file_ext,
             'description': '',
+            'preprocessor': None,
             'date': datetime.isoformat() + 'Z'
         }
         cfg_path = os.path.join(folder, 'config.json')
@@ -132,7 +134,7 @@ class ModelStorage(AbstractModelStorage):
 
         self._write_index(index)
 
-    def save_model(self, model, device: str, model_name: str) -> str:
+    def save_model(self, model, device: str, model_name: str, preprocessor_name: str = None) -> str:
         """Сохранить модель для конкретного устройства"""
         # Создаём папку для устройства
         device_folder = os.path.join(self.storage_dir, device)
@@ -154,7 +156,8 @@ class ModelStorage(AbstractModelStorage):
             'name': model_name,
             'path': model_path,
             'created_at': datetime.now().isoformat(),
-            'type': type(model).__name__
+            'type': type(model).__name__,
+            'preprocessor': preprocessor_name
         }
 
         # Сохраняем/перезаписываем модель по ключу model_name
@@ -213,3 +216,37 @@ class ModelStorage(AbstractModelStorage):
         except Exception as e:
             print(f"Ошибка при удалении модели {device}/{model_name}: {e}")
             return False
+
+    def load_preprocessor(self, preprocessor_name: str):
+        """Загрузить препроцессор из .joblib файла в папке storage/preprocessors"""
+        if not preprocessor_name:
+            return None
+
+        if not preprocessor_name.endswith('.joblib'):
+            preprocessor_name += '.joblib'
+
+        preprocessors_dir = os.path.join(os.path.dirname(self.storage_dir), 'preprocessors')
+        preprocessor_path = os.path.join(preprocessors_dir, preprocessor_name)
+
+        if os.path.exists(preprocessor_path):
+            try:
+                return load(preprocessor_path)
+            except Exception as e:
+                print(f"Ошибка при загрузке препроцессора {preprocessor_path}: {e}")
+                return None
+
+        print(f"Препроцессор {preprocessor_name} не найден в: {preprocessor_path}")
+        return None
+
+    def get_model_preprocessor_name(self, device: str, model_name: str) -> str:
+        """Получить имя препроцессора для модели"""
+        index = self.read_index()
+
+        if device not in index:
+            return None
+
+        if isinstance(index[device], dict) and model_name in index[device]:
+            model_info = index[device][model_name]
+            return model_info.get('preprocessor')
+
+        return None

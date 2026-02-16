@@ -55,6 +55,9 @@ class DiskDataset(IterableDataset):
             if self.ids_set is not None and self.id_col in df.columns:
                 df = df[df[self.id_col].isin(self.ids_set)]
                 df = df.reset_index(drop=True)
+        if self._mode == "infer":
+            self._len += df.shape[0]
+        else:
             term = df['failure'].sum()
             self._len += df.shape[0] + term * (len(self.to_cens_time_list) +
                                                len(self.to_term_time_list)) - len(df[df['time'] == df['max_lifetime']])
@@ -147,7 +150,7 @@ class DiskDataset(IterableDataset):
         event_time = int(data_line[event_time_idx])
         time_to_event = event_time - cur_time
         # data_vec += [time_to_event]
-        y = data_line[label_idx] == '1'
+        y = (data_line[label_idx] == '1') or (data_line[label_idx] == 1) or (data_line[label_idx] == 'True')
         if y:
             extended_list = [[data_line[id_idx], int(data_line[time_idx]), torch.tensor(data_vec), y, time_to_event]]
             for time in self.to_cens_time_list:
@@ -177,12 +180,12 @@ class DiskDataset(IterableDataset):
         """
         data_vec = [float(data_line[i]) for i in range(len(data_line)) if i not in [
             id_idx, time_idx, event_time_idx, label_idx]]
-        y = data_line[label_idx] == '1'
+        y = (data_line[label_idx] == '1') or (data_line[label_idx] == 1) or (data_line[label_idx] == 'True')
         cur_time = int(data_line[time_idx])
         event_time = int(data_line[event_time_idx])
         time_to_event = event_time - cur_time
 
-        return data_line[id_idx], cur_time, torch.Tensor(data_vec), y, time_to_event
+        return data_line[id_idx], cur_time, torch.tensor(data_vec), y, time_to_event
 
     def _parse_infer_line(self, data_line: List[str], id_idx: int, time_idx: int) -> Tuple[str, int, torch.Tensor, bool, int]:
         """Parse a line of inference data.
@@ -198,7 +201,7 @@ class DiskDataset(IterableDataset):
         data_vec = [float(data_line[i]) for i in range(len(data_line)) if i not in [id_idx, time_idx]]
         cur_time = int(data_line[time_idx])
         time_to_event = -1
-        return data_line[id_idx], cur_time, torch.tensor(data_vec), 0, time_to_event
+        return data_line[id_idx], cur_time, torch.tensor(data_vec), False, time_to_event
 
     def _split_files_for_workers(self, worker_info):
         """Split files across workers to avoid duplicates.

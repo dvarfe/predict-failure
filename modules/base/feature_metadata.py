@@ -10,7 +10,7 @@ class FeatureType(Enum):
     """Тип признака для определения способа отображения"""
     NUMERICAL = "numerical"     # Числовой
     CATEGORICAL = "categorical"  # Категориальный
-    TIMESTAMP = "timestamp"     # Временная метка
+    TIMESTAMP = "time"     # Временная метка
     IDENTIFIER = "identifier"   # Идентификатор
 
 

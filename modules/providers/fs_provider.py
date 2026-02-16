@@ -33,12 +33,12 @@ class FileSystemDataProvider(AbstractDataProvider):
         if not os.path.exists(path):
             return None
         df = pd.read_csv(path)
-        if (start_time is not None or end_time is not None) and 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_numeric(df['timestamp'], errors='coerce')
+        if (start_time is not None or end_time is not None) and 'time' in df.columns:
+            df['time'] = pd.to_numeric(df['time'], errors='coerce')
             if start_time is not None:
-                df = df[df['timestamp'] >= float(start_time)]
+                df = df[df['time'] >= float(start_time)]
             if end_time is not None:
-                df = df[df['timestamp'] <= float(end_time)]
+                df = df[df['time'] <= float(end_time)]
             df = df.reset_index(drop=True)
         return df
 

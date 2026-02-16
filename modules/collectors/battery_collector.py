@@ -21,7 +21,7 @@ class BatteryCollector(AbstractDataCollector):
     def get_feature_metadata(cls) -> Dict[str, FeatureMetadata]:
         """Метаданные всех признаков батареи"""
         return {
-            "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
+            "time": FeatureMetadata("time", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
             "battery_id": FeatureMetadata("battery_id", FeatureType.IDENTIFIER, "", "Идентификатор батареи"),
             "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель батареи"),
             "battery_present": FeatureMetadata("battery_present", FeatureType.CATEGORICAL, "bool", "Присутствует ли батарея"),
@@ -69,7 +69,7 @@ class BatteryCollector(AbstractDataCollector):
     def _collect_battery_data(self, timestamp: float) -> Dict[str, Any]:
         """Собрать все данные батареи"""
         data = {
-            "timestamp": timestamp,
+            "time": timestamp,
             "battery_id": "system_battery",
             "device_name": "System Battery",
             "battery_present": False,

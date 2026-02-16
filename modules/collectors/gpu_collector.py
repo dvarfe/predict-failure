@@ -82,7 +82,7 @@ class AbstractGPUDataCollector(AbstractDataCollector):
         """Метаданные всех признаков GPU"""
         return {
             "unique_id": FeatureMetadata("unique_id", FeatureType.IDENTIFIER, "", "Уникальный идентификатор устройства"),
-            "timestamp": FeatureMetadata("timestamp", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
+            "time": FeatureMetadata("time", FeatureType.TIMESTAMP, "unix_time", "Время сбора данных"),
             "index": FeatureMetadata("index", FeatureType.NUMERICAL, "index", "Индекс GPU в системе"),
             "name": FeatureMetadata("name", FeatureType.CATEGORICAL, "", "Название GPU"),
             "device_name": FeatureMetadata("device_name", FeatureType.CATEGORICAL, "", "Имя/модель устройства"),
@@ -178,7 +178,7 @@ class AbstractGPUDataCollector(AbstractDataCollector):
                         encoder_decoder_list) else {}
 
                     gpu_data = {
-                        "timestamp": timestamp,
+                        "time": timestamp,
                         "unique_id": gpu.get('unique_id', ""),
                         "id": gpu['id'],
                         "name": gpu['name'],
@@ -208,7 +208,7 @@ class AbstractGPUDataCollector(AbstractDataCollector):
                     all_gpu_data.append(gpu_data)
         else:
             empty_data = {
-                "timestamp": timestamp,
+                "time": timestamp,
                 "unique_id": None,
                 "id": None,
                 "name": None,
