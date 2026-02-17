@@ -372,4 +372,4 @@ def api_model_parameters(model_type):
 
 
 if __name__ == '__main__':
-    app.run(debug=False, threaded=False, host='0.0.0.0', port=11111)
+    app.run(debug=False, threaded=False, host='0.0.0.0', port=7011)
