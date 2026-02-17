@@ -8,10 +8,11 @@ from typing import Optional
 from ..base.model_base import AbstractModel
 
 
-class CoxTimeVaryingEstimator(CoxTimeVaryingFitter):
+class CoxTimeVaryingEstimator(CoxTimeVaryingFitter, AbstractModel):
     """
     CoxTimeVaryingEstimator: полностью совместим с новой инфраструктурой.
     Формирует корректные интервалы start/stop для TV-Cox на основе time и duration.
+    Наследует от CoxTimeVaryingFitter (lifelines) и AbstractModel (система интерфейсов).
     """
 
     def __init__(self, penalizer=0.0, l1_ratio=0.0, event_col="failure", time_col='time', id_col='serial_number', device=None):
